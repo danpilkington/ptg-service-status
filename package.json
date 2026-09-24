@@ -1,0 +1,23 @@
+{
+  "name": "ptg-service-status",
+  "author": "Dan Pilkington - dan.pilkington@progressive-technology.co.uk",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Progressive Technology Group service status dashboard",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@azure/identity": "^4.4.1",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "msnodesqlv8": "^5.5.0",
+    "mssql": "^12.7.2"
+  }
+}

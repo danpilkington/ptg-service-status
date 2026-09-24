@@ -1,0 +1,9 @@
+.env
+.env.*
+!.env.example
+node_modules/
+.vs/
+*.tmp
+users.json
+freshservice-state.json
+status.json
