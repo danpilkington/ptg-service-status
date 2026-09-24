@@ -1,0 +1,47 @@
+{
+  "globalHeaders": {
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https://progressive-technology.co.uk data:; connect-src 'self'; frame-ancestors 'self' https://*.freshservice.com; base-uri 'self'; form-action 'self' https://progressive-technology.freshservice.com"
+  },
+  "routes": [
+    {
+      "route": "/admin",
+      "redirect": "/admin/",
+      "statusCode": 302
+    },
+    {
+      "route": "/admin/",
+      "rewrite": "/admin/index.html"
+    },
+    {
+      "route": "/.env*",
+      "statusCode": 404
+    },
+    {
+      "route": "/node_modules/*",
+      "statusCode": 404
+    },
+    {
+      "route": "/server.js",
+      "statusCode": 404
+    },
+    {
+      "route": "/admin-api.js",
+      "statusCode": 404
+    },
+    {
+      "route": "/package*.json",
+      "statusCode": 404
+    },
+    {
+      "route": "/test/*",
+      "statusCode": 404
+    },
+    {
+      "route": "/status.json",
+      "statusCode": 404
+    }
+  ]
+}
