@@ -42,7 +42,19 @@
     let publishedIds = new Set();
     let healthResults = {};
     const credentialEdits = new Map();
-    const format = value => value ? new Date(value).toLocaleString("en-GB") : "Not set";
+    const format = value => {
+        const parsed = new Date(value);
+        if (!value || Number.isNaN(parsed.getTime())) return "Not set";
+        const pad = part => String(part).padStart(2, "0");
+        return `${pad(parsed.getDate())}/${pad(parsed.getMonth() + 1)}/${parsed.getFullYear()} ` +
+            `${pad(parsed.getHours())}:${pad(parsed.getMinutes())}:${pad(parsed.getSeconds())}`;
+    };
+    const formatTime = value => {
+        const parsed = new Date(value);
+        if (Number.isNaN(parsed.getTime())) return "";
+        const pad = part => String(part).padStart(2, "0");
+        return `${pad(parsed.getHours())}:${pad(parsed.getMinutes())}:${pad(parsed.getSeconds())}`;
+    };
     const localDate = value => {
         if (!value) return "";
         const d = new Date(value);
@@ -76,23 +88,27 @@
         for (const service of data.services) {
             const old = baseline.services.find(s => s.id === service.id);
             const fields = ["name", "description", "status", "group", "order"].filter(k => !old || (old[k] ?? "") !== (service[k] ?? ""));
-            if (fields.length) result.push({ title: service.name, detail: old ? "Updated service" : "New service",
-                fields: fields.map(k => k + ": " + (old ? (k === "status" ? labels[old.status] : old[k] ?? "Not set") + " → " : "") + (k === "status" ? labels[service.status] : service[k] ?? "Not set")) });
+            if (fields.length) result.push({
+                title: service.name, detail: old ? "Updated service" : "New service",
+                fields: fields.map(k => k + ": " + (old ? (k === "status" ? labels[old.status] : old[k] ?? "Not set") + " → " : "") + (k === "status" ? labels[service.status] : service[k] ?? "Not set"))
+            });
         }
         for (const service of baseline.services.filter(old => !data.services.some(s => s.id === old.id))) {
-            result.push({title: service.name, detail: "Removed service", fields: ["This service will no longer appear on the dashboard. Resolved incident history is retained."]});
+            result.push({ title: service.name, detail: "Removed service", fields: ["This service will no longer appear on the dashboard. Resolved incident history is retained."] });
         }
-        if (JSON.stringify(data.announcement || null) !== JSON.stringify(baseline.announcement || null)) result.push({title: "Site announcement", detail: data.announcement ? "Updated announcement" : "Removed announcement", fields: [data.announcement ? data.announcement.title + ": " + data.announcement.message + " · " + data.announcement.level + " · Expires: " + format(data.announcement.expiresAt) : "The public banner will be removed."]});
+        if (JSON.stringify(data.announcement || null) !== JSON.stringify(baseline.announcement || null)) result.push({ title: "Site announcement", detail: data.announcement ? "Updated announcement" : "Removed announcement", fields: [data.announcement ? data.announcement.title + ": " + data.announcement.message + " · " + data.announcement.level + " · Expires: " + format(data.announcement.expiresAt) : "The public banner will be removed."] });
         for (const service of data.services) {
-            const old = baseline.services.find(s=>s.id===service.id);
-            if (JSON.stringify(old?.monitor || null) !== JSON.stringify(service.monitor || null)) result.push({title:service.name,detail:"Changed health check",fields:[service.monitor ? service.monitor.type.toUpperCase()+" "+(service.monitor.type==="supabase"?service.monitor.projectRef:service.monitor.target)+(service.monitor.port?":"+service.monitor.port:"")+" every "+service.monitor.interval+"s"+(service.monitor.paused?" (paused)":"") : "Manual availability"]});
+            const old = baseline.services.find(s => s.id === service.id);
+            if (JSON.stringify(old?.monitor || null) !== JSON.stringify(service.monitor || null)) result.push({ title: service.name, detail: "Changed health check", fields: [service.monitor ? service.monitor.type.toUpperCase() + " " + (service.monitor.type === "supabase" ? service.monitor.projectRef : service.monitor.target) + (service.monitor.port ? ":" + service.monitor.port : "") + " every " + service.monitor.interval + "s" + (service.monitor.paused ? " (paused)" : "") : "Manual availability"] });
         }
-        const names = { autoStatus: "Automatic maintenance status", title: "Title", message: "Details", serviceId: "Service", phase: "Stage", impact: "PTG impact",
-            workaround: "Workaround", nextUpdateAt: "Next update", start: "Starts", end: "Ends", pendingUpdate: "New timeline entry", note: "PTG guidance" };
+        const names = {
+            autoStatus: "Automatic maintenance status", title: "Title", message: "Details", serviceId: "Service", phase: "Stage", impact: "PTG impact",
+            workaround: "Workaround", nextUpdateAt: "Next update", start: "Starts", end: "Ends", pendingUpdate: "New timeline entry", note: "PTG guidance"
+        };
         const value = (item, field) => item?.[field] || (field === "phase" ? "investigating" : field === "impact" ? "unknown" : "");
         const display = (field, v) => field === "autoStatus" ? (v ? "Enabled" : "Disabled") : field === "phase" ? phases[v] : field === "impact" ? impacts[v] :
             field === "serviceId" ? data.services.find(s => s.id === v)?.name || v :
-            ["nextUpdateAt", "start", "end"].includes(field) && v ? format(v) : v || "Not set";
+                ["nextUpdateAt", "start", "end"].includes(field) && v ? format(v) : v || "Not set";
         for (const [type, label, fields] of [
             ["incidents", "Incident", ["title", "serviceId", "message", "phase", "impact", "workaround", "nextUpdateAt", "pendingUpdate"]],
             ["maintenance", "Maintenance", ["title", "serviceId", "message", "start", "end", "autoStatus"]],
@@ -102,8 +118,10 @@
             for (const item of current) {
                 const old = oldItems.find(i => i.id === item.id);
                 const changed = fields.filter(field => !old || value(old, field) !== value(item, field));
-                if (changed.length) result.push({ title: item.title || item.id, detail: (old ? "Updated " : "New ") + label.toLowerCase(),
-                    fields: changed.map(field => names[field] + ": " + (old ? display(field, value(old, field)) + " → " : "") + display(field, value(item, field))) });
+                if (changed.length) result.push({
+                    title: item.title || item.id, detail: (old ? "Updated " : "New ") + label.toLowerCase(),
+                    fields: changed.map(field => names[field] + ": " + (old ? display(field, value(old, field)) + " → " : "") + display(field, value(item, field)))
+                });
             }
             for (const old of oldItems.filter(i => !current.some(n => n.id === i.id))) result.push({ title: old.title || old.id, detail: "Removed " + label.toLowerCase(), fields: ["This notice will be removed when published."] });
         }
@@ -205,7 +223,7 @@
         $("maintenance-start").value = localDate(item.start); $("maintenance-end").value = localDate(item.end);
         $("maintenance-editor-title").textContent = "Edit maintenance";
         $("maintenance-save").textContent = "Save maintenance to draft"; $("maintenance-cancel").textContent = "Cancel edit";
-        $("maintenance-title").focus(); $("maintenance-form").scrollIntoView({block:"center",behavior:"smooth"});
+        $("maintenance-title").focus(); $("maintenance-form").scrollIntoView({ block: "center", behavior: "smooth" });
     }
     function filterMicrosoft() {
         const query = $("microsoft-search").value.trim().toLowerCase();
@@ -221,7 +239,7 @@
         const response = await fetch("/api/admin/status", {
             method, cache: "no-store", signal: AbortSignal.timeout(20000),
             headers: { Authorization: "Bearer " + key, "Content-Type": "application/json" },
-            ...(method === "PUT" ? { body: JSON.stringify({ revision, data: {...data,services:data.services.map(service=>({...service,monitor:service.monitor?{...service.monitor,...(credentialEdits.get(service.id)||{})}:null}))} }) } : {})
+            ...(method === "PUT" ? { body: JSON.stringify({ revision, data: { ...data, services: data.services.map(service => ({ ...service, monitor: service.monitor ? { ...service.monitor, ...(credentialEdits.get(service.id) || {}) } : null })) } }) } : {})
         });
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || "Unable to connect to the publishing service.");
@@ -339,8 +357,10 @@
             form.addEventListener("submit", event => {
                 event.preventDefault();
                 const values = new FormData(form), next = values.get("nextUpdateAt");
-                const assessment = { id: issue.id, impact: values.get("impact"), note: values.get("note").trim(),
-                    workaround: values.get("workaround").trim(), nextUpdateAt: next ? new Date(next).toISOString() : "" };
+                const assessment = {
+                    id: issue.id, impact: values.get("impact"), note: values.get("note").trim(),
+                    workaround: values.get("workaround").trim(), nextUpdateAt: next ? new Date(next).toISOString() : ""
+                };
                 const previous = data.microsoftAssessments.findIndex(a => a.id === issue.id);
                 if (previous < 0) data.microsoftAssessments.push(assessment);
                 else data.microsoftAssessments[previous] = { ...data.microsoftAssessments[previous], ...assessment };
@@ -370,7 +390,7 @@
         $("services").replaceChildren();
         $("select-all-services").textContent = "Select all";
         for (const id of ["incident-service", "maintenance-service"]) $(id).replaceChildren();
-        for (const service of [...data.services].sort((a,b) => (a.order ?? 100) - (b.order ?? 100))) {
+        for (const service of [...data.services].sort((a, b) => (a.order ?? 100) - (b.order ?? 100))) {
             const card = text("article", "", "service " + service.status);
             const head = text("div", "", "service-header");
             const pill = text("span", labels[service.status], "pill " + service.status);
@@ -520,8 +540,10 @@
                 type === "maintenance" && editingMaintenance ? data.maintenance.find(i => i.id === editingMaintenance) : null;
             if (!service && type === "incident" && previous && $("incident-phase").value === "resolved" && $("incident-service").value === previous.serviceId) service = { id: previous.serviceId, name: previous.service };
             if (!service) return feedback("Choose an active service. To reopen an incident for a removed service, assign it to an existing service first.", true);
-            const item = { ...previous, id: previous?.id || crypto.randomUUID(), title, message,
-                serviceId: service.id, service: service.name, source: "PTG", start: previous?.start || new Date().toISOString() };
+            const item = {
+                ...previous, id: previous?.id || crypto.randomUUID(), title, message,
+                serviceId: service.id, service: service.name, source: "PTG", start: previous?.start || new Date().toISOString()
+            };
             if (type === "maintenance") {
                 const start = new Date($("maintenance-start").value), end = new Date($("maintenance-end").value);
                 if (!(end > start)) return feedback("Maintenance must end after its start time.", true);
@@ -551,7 +573,7 @@
     });
     $("publish").addEventListener("click", () => {
         if (changedForms.size) return feedback("Save or cancel your open form changes before publishing the draft.", true);
-        if(data.services.some(s=>s.monitor?.credentialsChanged&&!credentialEdits.has(s.id)))return feedback("Re-enter API credentials for the recovered draft before publishing, or explicitly remove saved credentials.",true);
+        if (data.services.some(s => s.monitor?.credentialsChanged && !credentialEdits.has(s.id))) return feedback("Re-enter API credentials for the recovered draft before publishing, or explicitly remove saved credentials.", true);
         run(async () => {
             const result = await request("PUT");
             clearRecovery(); credentialEdits.clear();
@@ -571,8 +593,8 @@
     $("disconnect").addEventListener("click", () => {
         if (hasUnsaved() && !confirm("Discard unpublished changes and disconnect?")) return;
         clearRecovery(); credentialEdits.clear();
-        $("service-api-key").value="";$("service-api-auth").value="";
-        accountRequest("logout", "POST").catch(() => {}); clearUserForm(); $("users-list").replaceChildren(); $("users-feedback").textContent = ""; $("login-password").value = "";
+        $("service-api-key").value = ""; $("service-api-auth").value = "";
+        accountRequest("logout", "POST").catch(() => { }); clearUserForm(); $("users-list").replaceChildren(); $("users-feedback").textContent = ""; $("login-password").value = "";
         key = ""; data = null; baseline = null; revision = ""; dirty = false; publicIssues = []; changedForms.clear();
         $("editor").hidden = true; $("connection").hidden = false; $("admin-key").value = "";
         $("published").textContent = "Connect to load"; $("published").removeAttribute("datetime");
@@ -612,25 +634,27 @@
         const old = data.services.find(s => s.id === editingService);
         const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 50) || "service";
         const mode = $("service-check-type").value;
-        const monitor = mode === "manual" ? null : {type:mode,target:$("service-check-target").value.trim(),interval:Number($("service-check-interval").value),paused:$("service-check-paused").checked,...(mode==="tcp"?{port:Number($("service-check-port").value)}:{}),...(mode==="supabase"?{projectRef:$("service-supabase-project").value,services:[...document.querySelectorAll(".service-supabase-service:checked")].map(input=>input.value)}:{})};
-        if (mode === "supabase" && !monitor.services.length) return feedback("Select at least one Supabase service to monitor.",true);
-        if (monitor && !["http","supabase"].includes(mode) && (!/^(?:\d{1,3}\.){3}\d{1,3}$/.test(monitor.target) || monitor.target.split(".").some(n=>Number(n)>255))) return feedback("Enter a valid internal IPv4 address for the health check.",true);
-        const item = { ...old, monitor, id: old?.id || slug + "-" + crypto.randomUUID().slice(0, 8), name, description,
-            group: $("service-group").value.trim(), order: Number($("service-order").value), status, statusText: labels[status], source: "PTG" };
+        const monitor = mode === "manual" ? null : { type: mode, target: $("service-check-target").value.trim(), interval: Number($("service-check-interval").value), paused: $("service-check-paused").checked, ...(mode === "tcp" ? { port: Number($("service-check-port").value) } : {}), ...(mode === "supabase" ? { projectRef: $("service-supabase-project").value, services: [...document.querySelectorAll(".service-supabase-service:checked")].map(input => input.value) } : {}) };
+        if (mode === "supabase" && !monitor.services.length) return feedback("Select at least one Supabase service to monitor.", true);
+        if (monitor && !["http", "supabase"].includes(mode) && (!/^(?:\d{1,3}\.){3}\d{1,3}$/.test(monitor.target) || monitor.target.split(".").some(n => Number(n) > 255))) return feedback("Enter a valid internal IPv4 address for the health check.", true);
+        const item = {
+            ...old, monitor, id: old?.id || slug + "-" + crypto.randomUUID().slice(0, 8), name, description,
+            group: $("service-group").value.trim(), order: Number($("service-order").value), status, statusText: labels[status], source: "PTG"
+        };
         if (mode === "http") {
-            let url;try{url=new URL(monitor.target);}catch{return feedback("Enter a plain HTTP/HTTPS API URL, without Markdown formatting.",true);}
-            if(!["http:","https:"].includes(url.protocol))return feedback("Use an HTTP/HTTPS URL.",true);
-            monitor.expectedText=$("service-api-expect").value;
-            monitor.method=$("service-api-method").value;
-            monitor.hasApiKey=old?.monitor?.hasApiKey||false;monitor.hasAuthorization=old?.monitor?.hasAuthorization||false;
-            const apiKey=$("service-api-key").value, authorization=$("service-api-auth").value;
-            if(apiKey||authorization||$("service-api-clear").checked){
-                const edits=$("service-api-clear").checked?{apiKey:"",authorization:""}:{...(credentialEdits.get(item.id)||{})};
-                if(apiKey)edits.apiKey=apiKey;if(authorization)edits.authorization=authorization;
-                credentialEdits.set(item.id,edits);monitor.credentialsChanged=crypto.randomUUID();
-            } else if(old?.monitor?.credentialsChanged)monitor.credentialsChanged=old.monitor.credentialsChanged;
+            let url; try { url = new URL(monitor.target); } catch { return feedback("Enter a plain HTTP/HTTPS API URL, without Markdown formatting.", true); }
+            if (!["http:", "https:"].includes(url.protocol)) return feedback("Use an HTTP/HTTPS URL.", true);
+            monitor.expectedText = $("service-api-expect").value;
+            monitor.method = $("service-api-method").value;
+            monitor.hasApiKey = old?.monitor?.hasApiKey || false; monitor.hasAuthorization = old?.monitor?.hasAuthorization || false;
+            const apiKey = $("service-api-key").value, authorization = $("service-api-auth").value;
+            if (apiKey || authorization || $("service-api-clear").checked) {
+                const edits = $("service-api-clear").checked ? { apiKey: "", authorization: "" } : { ...(credentialEdits.get(item.id) || {}) };
+                if (apiKey) edits.apiKey = apiKey; if (authorization) edits.authorization = authorization;
+                credentialEdits.set(item.id, edits); monitor.credentialsChanged = crypto.randomUUID();
+            } else if (old?.monitor?.credentialsChanged) monitor.credentialsChanged = old.monitor.credentialsChanged;
         } else credentialEdits.delete(item.id);
-        $("service-api-key").value="";$("service-api-auth").value="";
+        $("service-api-key").value = ""; $("service-api-auth").value = "";
         if (old) data.services[data.services.findIndex(s => s.id === old.id)] = item;
         else data.services.push(item);
         for (const incident of data.incidents) if (incident.serviceId === item.id && incident.phase !== "resolved") incident.service = name;
@@ -697,35 +721,35 @@
 
     function checkFields() {
         const mode = $("service-check-type").value;
-        $("service-check-target").required = ["ping","tcp","http"].includes(mode);
+        $("service-check-target").required = ["ping", "tcp", "http"].includes(mode);
         $("service-check-port").required = mode === "tcp";
         $("service-api-fields").hidden = mode !== "http";
         $("service-supabase-fields").hidden = mode !== "supabase";
     }
     $("service-check-type").addEventListener("change", checkFields);
     function renderHealthResults() {
-        if(!data) return;
-        document.querySelectorAll("[data-health-service]").forEach(el=>{
-            const service=data.services.find(s=>s.id===el.dataset.healthService), config=service?.monitor;
-            if(!config){el.textContent="Manual availability";return;}
-            if(config.paused){el.textContent="Checks paused · saved availability is shown";return;}
-            if(JSON.stringify(config)!==JSON.stringify(baseline?.services.find(s=>s.id===service.id)?.monitor)){el.textContent="Health check changes awaiting publication";return;}
-            const state=healthResults[service.id];
-            const target=config.type==="supabase"?config.projectRef:config.target;
-            el.textContent=config.type.toUpperCase()+" · "+target+(config.port?":"+config.port:"")+" · "+(!state?"Waiting for background checks":(state.stale?"Results are stale":state.message)+" · "+format(state.checkedAt)+" · "+state.successes+" consecutive successes / "+state.failures+" failures"+(state.latencyMs!==null?" · "+state.latencyMs+"ms":""));
+        if (!data) return;
+        document.querySelectorAll("[data-health-service]").forEach(el => {
+            const service = data.services.find(s => s.id === el.dataset.healthService), config = service?.monitor;
+            if (!config) { el.textContent = "Manual availability"; return; }
+            if (config.paused) { el.textContent = "Checks paused · saved availability is shown"; return; }
+            if (JSON.stringify(config) !== JSON.stringify(baseline?.services.find(s => s.id === service.id)?.monitor)) { el.textContent = "Health check changes awaiting publication"; return; }
+            const state = healthResults[service.id];
+            const target = config.type === "supabase" ? config.projectRef : config.target;
+            el.textContent = config.type.toUpperCase() + " · " + target + (config.port ? ":" + config.port : "") + " · " + (!state ? "Waiting for background checks" : (state.stale ? "Results are stale" : state.message) + " · " + format(state.checkedAt) + " · " + state.successes + " consecutive successes / " + state.failures + " failures" + (state.latencyMs !== null ? " · " + state.latencyMs + "ms" : ""));
         });
     }
-    async function loadHealthResults(){
-        if(!key||!data)return;
+    async function loadHealthResults() {
+        if (!key || !data) return;
         try {
-            const response=await fetch("/api/admin/checks",{headers:{Authorization:"Bearer "+key},cache:"no-store",signal:AbortSignal.timeout(10000)});
-            if(!response.ok)throw new Error("Unavailable");
-            healthResults=(await response.json()).checks||{};renderHealthResults();
+            const response = await fetch("/api/admin/checks", { headers: { Authorization: "Bearer " + key }, cache: "no-store", signal: AbortSignal.timeout(10000) });
+            if (!response.ok) throw new Error("Unavailable");
+            healthResults = (await response.json()).checks || {}; renderHealthResults();
         } catch {
-            document.querySelectorAll("[data-health-service]").forEach(el=>{if(data?.services.find(s=>s.id===el.dataset.healthService)?.monitor)el.textContent="Monitoring results unavailable; reconnect or check the server.";});
+            document.querySelectorAll("[data-health-service]").forEach(el => { if (data?.services.find(s => s.id === el.dataset.healthService)?.monitor) el.textContent = "Monitoring results unavailable; reconnect or check the server."; });
         }
     }
-    window.setInterval(()=>{if(!busy)void loadHealthResults();},30000);
+    window.setInterval(() => { if (!busy) void loadHealthResults(); }, 30000);
 
     function renderAnnouncement() {
         const a = data.announcement;
@@ -741,7 +765,7 @@
         const title = $("announcement-title").value.trim(), message = $("announcement-message").value.trim();
         if (!title || !message) return feedback("Enter an announcement title and message.", true);
         const expiry = $("announcement-expiry").value;
-        data.announcement = {title, message, level: $("announcement-level").value, expiresAt: expiry ? new Date(expiry).toISOString() : ""};
+        data.announcement = { title, message, level: $("announcement-level").value, expiresAt: expiry ? new Date(expiry).toISOString() : "" };
         changedForms.delete("announcement-form"); markDirty(); feedback("Announcement staged. Publish to display the banner.");
     });
     $("announcement-cancel").addEventListener("click", renderAnnouncement);
@@ -752,7 +776,7 @@
     const draftKey = "ptg-admin-draft-v1";
     let recovery = null;
     function clearRecovery() {
-        try { localStorage.removeItem(draftKey); } catch {}
+        try { localStorage.removeItem(draftKey); } catch { }
         recovery = null; $("draft-recovery").hidden = true;
     }
     function persistDraft() {
@@ -762,10 +786,10 @@
             const forms = {};
             for (const id of changedForms) {
                 const form = $(id); if (!form) continue;
-                forms[id] = [...form.querySelectorAll("input,select,textarea")].filter(el => el.id && el.type !== "password").map(el => ({id:el.id,value:el.value,checked:el.checked}));
+                forms[id] = [...form.querySelectorAll("input,select,textarea")].filter(el => el.id && el.type !== "password").map(el => ({ id: el.id, value: el.value, checked: el.checked }));
             }
-            localStorage.setItem(draftKey, JSON.stringify({version:1,savedAt:new Date().toISOString(),revision,data,baseline,forms,editingId,editingMaintenance,editingService}));
-            $("draft-storage").textContent = "Draft saved in this browser at " + new Date().toLocaleTimeString("en-GB") + ". The admin key is not saved. Disconnect clears this copy.";
+            localStorage.setItem(draftKey, JSON.stringify({ version: 1, savedAt: new Date().toISOString(), revision, data, baseline, forms, editingId, editingMaintenance, editingService }));
+            $("draft-storage").textContent = "Draft saved in this browser at " + formatTime(new Date()) + ". The admin key is not saved. Disconnect clears this copy.";
         } catch {
             $("draft-storage").textContent = "This browser could not save the draft. Keep this tab open until you publish.";
         }
@@ -784,17 +808,17 @@
     $("discard-draft").addEventListener("click", () => { clearRecovery(); feedback("Saved recovery copy discarded."); });
     $("download-draft").addEventListener("click", () => {
         if (!recovery) return;
-        const url = URL.createObjectURL(new Blob([JSON.stringify(recovery,null,2)], {type:"application/json"}));
-        const link = document.createElement("a"); link.href = url; link.download = "ptg-unpublished-draft.json"; link.click(); setTimeout(()=>URL.revokeObjectURL(url),1000);
+        const url = URL.createObjectURL(new Blob([JSON.stringify(recovery, null, 2)], { type: "application/json" }));
+        const link = document.createElement("a"); link.href = url; link.download = "ptg-unpublished-draft.json"; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
     });
     $("restore-draft").addEventListener("click", () => {
         if (!recovery || recovery.revision !== revision) return;
         if (hasUnsaved() && !confirm("Replace current edits with the saved draft?")) return;
         const saved = recovery; recovery = null;
         data = saved.data; render(); baseline = saved.baseline;
-        if (saved.editingId) { const item = data.incidents.find(i=>i.id===saved.editingId); if (item) editIncident(item); }
-        if (saved.editingMaintenance) { const item = data.maintenance.find(i=>i.id===saved.editingMaintenance); if (item) editMaintenance(item); }
-        if (saved.forms["service-form"]) editService(data.services.find(i=>i.id===saved.editingService));
+        if (saved.editingId) { const item = data.incidents.find(i => i.id === saved.editingId); if (item) editIncident(item); }
+        if (saved.editingMaintenance) { const item = data.maintenance.find(i => i.id === saved.editingMaintenance); if (item) editMaintenance(item); }
+        if (saved.forms["service-form"]) editService(data.services.find(i => i.id === saved.editingService));
         for (const [id, fields] of Object.entries(saved.forms)) {
             if (!$(id)) continue;
             for (const field of fields) { const el = $(field.id); if (el && $(id).contains(el) && el.type !== "password") { el.value = field.value; if (el.type === "checkbox") el.checked = field.checked; } }
