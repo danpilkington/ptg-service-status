@@ -27,6 +27,16 @@
             });
         });
 
+        document.addEventListener("click", event => {
+            const control = event.target.closest("[data-open-admin-tab]");
+            if (!control) return;
+            const id = control.dataset.openAdminTab;
+            const tab = tabs.find(item => item.dataset.adminTab === id);
+            if (!tab) return;
+            event.preventDefault(); activate(id); tab.focus();
+            document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+
         const requested = location.hash.slice(1);
         activate(tabs.some(tab => tab.dataset.adminTab === requested) ? requested : tabs[0].dataset.adminTab);
     }
@@ -38,7 +48,7 @@
     const impacts = { unknown: "Impact not confirmed", confirmed: "Affecting PTG", "not-affected": "No PTG impact confirmed" };
     let key = "", data = null, revision = "", dirty = false, busy = false, editingId = null, publicIssues = [];
     const changedForms = new Set();
-    let baseline = null, editingMaintenance = null, editingService = null;
+    let baseline = null, editingMaintenance = null, editingService = null, editingTimeline = null;
     let publishedIds = new Set();
     let healthResults = {};
     const credentialEdits = new Map();
@@ -88,27 +98,23 @@
         for (const service of data.services) {
             const old = baseline.services.find(s => s.id === service.id);
             const fields = ["name", "description", "status", "group", "order"].filter(k => !old || (old[k] ?? "") !== (service[k] ?? ""));
-            if (fields.length) result.push({
-                title: service.name, detail: old ? "Updated service" : "New service",
-                fields: fields.map(k => k + ": " + (old ? (k === "status" ? labels[old.status] : old[k] ?? "Not set") + " → " : "") + (k === "status" ? labels[service.status] : service[k] ?? "Not set"))
-            });
+            if (fields.length) result.push({ title: service.name, detail: old ? "Updated service" : "New service",
+                fields: fields.map(k => k + ": " + (old ? (k === "status" ? labels[old.status] : old[k] ?? "Not set") + " → " : "") + (k === "status" ? labels[service.status] : service[k] ?? "Not set")) });
         }
         for (const service of baseline.services.filter(old => !data.services.some(s => s.id === old.id))) {
-            result.push({ title: service.name, detail: "Removed service", fields: ["This service will no longer appear on the dashboard. Resolved incident history is retained."] });
+            result.push({title: service.name, detail: "Removed service", fields: ["This service will no longer appear on the dashboard. Resolved incident history is retained."]});
         }
-        if (JSON.stringify(data.announcement || null) !== JSON.stringify(baseline.announcement || null)) result.push({ title: "Site announcement", detail: data.announcement ? "Updated announcement" : "Removed announcement", fields: [data.announcement ? data.announcement.title + ": " + data.announcement.message + " · " + data.announcement.level + " · Expires: " + format(data.announcement.expiresAt) : "The public banner will be removed."] });
+        if (JSON.stringify(data.announcement || null) !== JSON.stringify(baseline.announcement || null)) result.push({title: "Site announcement", detail: data.announcement ? "Updated announcement" : "Removed announcement", fields: [data.announcement ? data.announcement.title + ": " + data.announcement.message + " · " + data.announcement.level + " · Expires: " + format(data.announcement.expiresAt) : "The public banner will be removed."]});
         for (const service of data.services) {
-            const old = baseline.services.find(s => s.id === service.id);
-            if (JSON.stringify(old?.monitor || null) !== JSON.stringify(service.monitor || null)) result.push({ title: service.name, detail: "Changed health check", fields: [service.monitor ? service.monitor.type.toUpperCase() + " " + (service.monitor.type === "supabase" ? service.monitor.projectRef : service.monitor.target) + (service.monitor.port ? ":" + service.monitor.port : "") + " every " + service.monitor.interval + "s" + (service.monitor.paused ? " (paused)" : "") : "Manual availability"] });
+            const old = baseline.services.find(s=>s.id===service.id);
+            if (JSON.stringify(old?.monitor || null) !== JSON.stringify(service.monitor || null)) result.push({title:service.name,detail:"Changed health check",fields:[service.monitor ? service.monitor.type.toUpperCase()+" "+(service.monitor.type==="supabase"?service.monitor.projectRef:service.monitor.target)+(service.monitor.port?":"+service.monitor.port:"")+" every "+service.monitor.interval+"s"+(service.monitor.paused?" (paused)":"") : "Manual availability"]});
         }
-        const names = {
-            autoStatus: "Automatic maintenance status", title: "Title", message: "Details", serviceId: "Service", phase: "Stage", impact: "PTG impact",
-            workaround: "Workaround", nextUpdateAt: "Next update", start: "Starts", end: "Ends", pendingUpdate: "New timeline entry", note: "PTG guidance"
-        };
+        const names = { autoStatus: "Automatic maintenance status", title: "Title", message: "Details", serviceId: "Service", phase: "Stage", impact: "PTG impact",
+            workaround: "Workaround", nextUpdateAt: "Next update", start: "Starts", end: "Ends", pendingUpdate: "New timeline entry", note: "PTG guidance" };
         const value = (item, field) => item?.[field] || (field === "phase" ? "investigating" : field === "impact" ? "unknown" : "");
         const display = (field, v) => field === "autoStatus" ? (v ? "Enabled" : "Disabled") : field === "phase" ? phases[v] : field === "impact" ? impacts[v] :
             field === "serviceId" ? data.services.find(s => s.id === v)?.name || v :
-                ["nextUpdateAt", "start", "end"].includes(field) && v ? format(v) : v || "Not set";
+            ["nextUpdateAt", "start", "end"].includes(field) && v ? format(v) : v || "Not set";
         for (const [type, label, fields] of [
             ["incidents", "Incident", ["title", "serviceId", "message", "phase", "impact", "workaround", "nextUpdateAt", "pendingUpdate"]],
             ["maintenance", "Maintenance", ["title", "serviceId", "message", "start", "end", "autoStatus"]],
@@ -118,10 +124,18 @@
             for (const item of current) {
                 const old = oldItems.find(i => i.id === item.id);
                 const changed = fields.filter(field => !old || value(old, field) !== value(item, field));
-                if (changed.length) result.push({
-                    title: item.title || item.id, detail: (old ? "Updated " : "New ") + label.toLowerCase(),
-                    fields: changed.map(field => names[field] + ": " + (old ? display(field, value(old, field)) + " → " : "") + display(field, value(item, field)))
-                });
+                if (changed.length) result.push({ title: item.title || item.id, detail: (old ? "Updated " : "New ") + label.toLowerCase(),
+                    fields: changed.map(field => names[field] + ": " + (old ? display(field, value(old, field)) + " → " : "") + display(field, value(item, field))) });
+                for (const correction of item.updateCorrections || []) {
+                    const original = old?.updates?.find(update => update.id === correction.id);
+                    result.push({ title: item.title || item.id, detail: "Corrected published timeline update",
+                        fields: [format(original?.at), "Message: " + (original?.message || "Not set") + " → " + correction.message] });
+                }
+                for (const updateId of item.deletedUpdateIds || []) {
+                    const original = old?.updates?.find(update => update.id === updateId);
+                    result.push({ title: item.title || item.id, detail: "Delete published timeline update",
+                        fields: [format(original?.at), original?.message || "Update unavailable"] });
+                }
             }
             for (const old of oldItems.filter(i => !current.some(n => n.id === i.id))) result.push({ title: old.title || old.id, detail: "Removed " + label.toLowerCase(), fields: ["This notice will be removed when published."] });
         }
@@ -139,7 +153,54 @@
             change.fields.forEach(value => details.append(text("p", value)));
             container.append(details);
         }
-        renderAttention(); renderHealthResults();
+        renderDashboard(); renderAttention(); renderHealthResults();
+    }
+    function renderDashboard() {
+        if (!data || !$("admin-overview")) return;
+        const counts = data.services.reduce((totals, service) => {
+            totals[service.status] = (totals[service.status] || 0) + 1; return totals;
+        }, {});
+        $("dashboard-operational").textContent = counts.operational || 0;
+        $("dashboard-affected").textContent = ["degraded", "advisory", "outage", "maintenance"].reduce((total, state) => total + (counts[state] || 0), 0);
+        $("dashboard-unknown").textContent = counts.unknown || 0;
+        $("dashboard-change-total").textContent = changes().length;
+        $("dashboard-published").textContent = format(data.publishedAt);
+        $("dashboard-live-state").textContent = dirty ? "Draft changes" : "Published state";
+        $("dashboard-live-state").classList.toggle("draft", dirty);
+
+        if (data.announcement) {
+            $("dashboard-announcement").textContent = data.announcement.title;
+            $("dashboard-announcement-detail").textContent = (data.announcement.level || "info").replace(/^./, value => value.toUpperCase()) +
+                (data.announcement.expiresAt ? " · Expires " + format(data.announcement.expiresAt) : " · No expiry set");
+        } else {
+            $("dashboard-announcement").textContent = "No site-wide announcement";
+            $("dashboard-announcement-detail").textContent = "The public banner is currently clear.";
+        }
+
+        const incidents = data.incidents.filter(incident => incident.phase !== "resolved")
+            .sort((a, b) => Date.parse(b.updatedAt || b.start) - Date.parse(a.updatedAt || a.start));
+        if (incidents.length) {
+            const latest = incidents[0];
+            $("dashboard-incident-summary").textContent = incidents.length + " active incident" + (incidents.length === 1 ? "" : "s");
+            $("dashboard-incident-detail").textContent = (latest.service || latest.serviceId) + " · " + (phases[latest.phase] || "Investigating") + " · " + latest.title;
+        } else {
+            $("dashboard-incident-summary").textContent = "No active incidents";
+            $("dashboard-incident-detail").textContent = "There are no active PTG incident notices.";
+        }
+
+        const now = Date.now();
+        const maintenance = [...data.maintenance].filter(item => Date.parse(item.end) > now)
+            .sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
+        const active = maintenance.find(item => Date.parse(item.start) <= now) || maintenance[0];
+        if (active) {
+            const inProgress = Date.parse(active.start) <= now;
+            $("dashboard-maintenance-summary").textContent = inProgress ? "Maintenance in progress" : "Next: " + active.title;
+            $("dashboard-maintenance-detail").textContent = (active.service || active.serviceId) + " · " +
+                (inProgress ? "Ends " + format(active.end) : "Starts " + format(active.start));
+        } else {
+            $("dashboard-maintenance-summary").textContent = "No upcoming maintenance";
+            $("dashboard-maintenance-detail").textContent = "No scheduled window is currently active or upcoming.";
+        }
     }
     function renderAttention() {
         const container = $("attention-items"); container.replaceChildren();
@@ -157,7 +218,7 @@
             [unassessed.length, "Microsoft issues awaiting an impact decision", "#manage-microsoft"]
         ];
         for (const [count, label, href] of entries) if (count) {
-            const link = text("a", count + " " + label, "attention-link"); link.href = href; container.append(link);
+            const link = text("a", count + " " + label, "attention-link"); link.href = href; link.dataset.openAdminTab = href.slice(1); container.append(link);
         }
         if (!container.children.length) container.append(text("p", "No outstanding items in the loaded information.", "empty-state"));
     }
@@ -223,7 +284,7 @@
         $("maintenance-start").value = localDate(item.start); $("maintenance-end").value = localDate(item.end);
         $("maintenance-editor-title").textContent = "Edit maintenance";
         $("maintenance-save").textContent = "Save maintenance to draft"; $("maintenance-cancel").textContent = "Cancel edit";
-        $("maintenance-title").focus(); $("maintenance-form").scrollIntoView({ block: "center", behavior: "smooth" });
+        $("maintenance-title").focus(); $("maintenance-form").scrollIntoView({block:"center",behavior:"smooth"});
     }
     function filterMicrosoft() {
         const query = $("microsoft-search").value.trim().toLowerCase();
@@ -239,24 +300,72 @@
         const response = await fetch("/api/admin/status", {
             method, cache: "no-store", signal: AbortSignal.timeout(20000),
             headers: { Authorization: "Bearer " + key, "Content-Type": "application/json" },
-            ...(method === "PUT" ? { body: JSON.stringify({ revision, data: { ...data, services: data.services.map(service => ({ ...service, monitor: service.monitor ? { ...service.monitor, ...(credentialEdits.get(service.id) || {}) } : null })) } }) } : {})
+            ...(method === "PUT" ? { body: JSON.stringify({ revision, data: {...data,services:data.services.map(service=>({...service,monitor:service.monitor?{...service.monitor,...(credentialEdits.get(service.id)||{})}:null}))} }) } : {})
         });
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || "Unable to connect to the publishing service.");
-        if (method === "GET" && result.editorVersion !== 5) throw new Error("The publishing server needs a restart to enable this updated admin page. Restart the Node server, then connect again.");
+        if (method === "GET" && result.editorVersion !== 7) throw new Error("The publishing server needs a restart to enable this updated admin page. Restart the Node server, then connect again.");
         return result;
     }
     function timeline(item) {
         const details = document.createElement("details");
-        details.append(text("summary", "Published timeline (" + (item.updates?.length || 0) + ")"));
+        const pending = new Set(item.deletedUpdateIds || []);
+        const remaining = (item.updates?.length || 0) - pending.size;
+        details.append(text("summary", "Published timeline (" + remaining + (pending.size ? ", " + pending.size + " pending deletion" : "") + ")"));
         const list = text("ol", "", "timeline");
         for (const update of [...(item.updates || [])].reverse()) {
             const li = document.createElement("li");
             li.append(text("strong", (phases[update.phase] || impacts[update.impact] || "Update") + " · " + format(update.at)),
                 text("p", update.message));
+            if (update.id && pending.has(update.id)) {
+                li.classList.add("pending-deletion");
+                li.append(text("p", "This update will be deleted when the draft is published.", "deletion-note"),
+                    button("Undo deletion", () => undoTimelineDeletion(item.id, update.id)));
+            } else if (update.id) {
+                const remove = button("Delete published update", () => deleteTimelineUpdate(item.id, update.id));
+                remove.classList.add("danger");
+                li.append(button("Edit published update", () => editTimelineUpdate(item.id, update.id)), remove);
+            }
             list.append(li);
         }
         details.append(list); return details;
+    }
+    function deleteTimelineUpdate(incidentId, updateId) {
+        const item = data.incidents.find(incident => incident.id === incidentId);
+        const update = item?.updates?.find(entry => entry.id === updateId);
+        if (!update) return feedback("That published update is no longer available. Reload the workspace and try again.", true);
+        if (!confirm("Delete the published update from " + format(update.at) + "? This remains reversible until you publish the draft.")) return;
+        item.deletedUpdateIds = [...new Set([...(item.deletedUpdateIds || []), updateId])];
+        item.updateCorrections = (item.updateCorrections || []).filter(correction => correction.id !== updateId);
+        const original = baseline.incidents.find(incident => incident.id === incidentId)?.updates?.find(entry => entry.id === updateId);
+        const index = item.updates.findIndex(entry => entry.id === updateId);
+        if (original && index >= 0) item.updates[index] = structuredClone(original);
+        renderEvents("incidents"); counts(); markDirty();
+        feedback("Published update deletion staged. Publish changes to remove it, or use Undo deletion.");
+    }
+    function undoTimelineDeletion(incidentId, updateId) {
+        const item = data.incidents.find(incident => incident.id === incidentId);
+        if (!item) return;
+        item.deletedUpdateIds = (item.deletedUpdateIds || []).filter(id => id !== updateId);
+        if (!item.deletedUpdateIds.length) delete item.deletedUpdateIds;
+        renderEvents("incidents"); counts(); markDirty();
+        feedback("Timeline update deletion undone.");
+    }
+    function editTimelineUpdate(incidentId, updateId) {
+        const item = data.incidents.find(incident => incident.id === incidentId);
+        const update = item?.updates?.find(entry => entry.id === updateId);
+        if (!update) return feedback("That published update is no longer available. Reload the workspace and try again.", true);
+        editingTimeline = { incidentId, updateId };
+        $("timeline-published").textContent = format(update.at); $("timeline-published").dateTime = update.at;
+        $("timeline-message").value = update.message || "";
+        $("timeline-phase").value = update.phase || "investigating";
+        $("timeline-impact").value = update.impact || "unknown";
+        $("timeline-workaround").value = update.workaround || "";
+        $("timeline-next-update").value = localDate(update.nextUpdateAt);
+        $("timeline-editor").showModal(); $("timeline-message").focus();
+    }
+    function closeTimelineEditor() {
+        editingTimeline = null; $("timeline-form").reset(); $("timeline-editor").close();
     }
     function resetIncidentForm() {
         $("incident-form").reset(); editingId = null;
@@ -296,7 +405,7 @@
             if (type === "incidents") {
                 article.append(text("p", (phases[item.phase || "investigating"]) + " · " + impacts[item.impact || "unknown"], "impact-note"));
                 if (item.pendingUpdate) article.append(text("p", "Draft update: " + item.pendingUpdate));
-                article.append(button("Edit / add update", () => editIncident(item)), timeline(item));
+                article.append(button(publishedIds.has(item.id) ? "Edit published notice / add update" : "Edit draft incident", () => editIncident(item)), timeline(item));
                 if (!publishedIds.has(item.id)) article.append(button("Remove draft incident", () => {
                     data.incidents = data.incidents.filter(i => i.id !== item.id);
                     if (editingId === item.id) resetIncidentForm();
@@ -304,7 +413,7 @@
                 }));
                 if (item.phase === "resolved") archive.append(article); else container.append(article);
             } else {
-                article.append(button("Edit maintenance", () => editMaintenance(item)));
+                article.append(button(baseline?.maintenance?.some(event => event.id === item.id) ? "Edit published maintenance" : "Edit draft maintenance", () => editMaintenance(item)));
                 article.append(button("Remove notice", () => {
                     if (editingMaintenance === item.id) resetMaintenanceForm();
                     data.maintenance = data.maintenance.filter(event => event.id !== item.id);
@@ -357,10 +466,8 @@
             form.addEventListener("submit", event => {
                 event.preventDefault();
                 const values = new FormData(form), next = values.get("nextUpdateAt");
-                const assessment = {
-                    id: issue.id, impact: values.get("impact"), note: values.get("note").trim(),
-                    workaround: values.get("workaround").trim(), nextUpdateAt: next ? new Date(next).toISOString() : ""
-                };
+                const assessment = { id: issue.id, impact: values.get("impact"), note: values.get("note").trim(),
+                    workaround: values.get("workaround").trim(), nextUpdateAt: next ? new Date(next).toISOString() : "" };
                 const previous = data.microsoftAssessments.findIndex(a => a.id === issue.id);
                 if (previous < 0) data.microsoftAssessments.push(assessment);
                 else data.microsoftAssessments[previous] = { ...data.microsoftAssessments[previous], ...assessment };
@@ -390,7 +497,7 @@
         $("services").replaceChildren();
         $("select-all-services").textContent = "Select all";
         for (const id of ["incident-service", "maintenance-service"]) $(id).replaceChildren();
-        for (const service of [...data.services].sort((a, b) => (a.order ?? 100) - (b.order ?? 100))) {
+        for (const service of [...data.services].sort((a,b) => (a.order ?? 100) - (b.order ?? 100))) {
             const card = text("article", "", "service " + service.status);
             const head = text("div", "", "service-header");
             const pill = text("span", labels[service.status], "pill " + service.status);
@@ -540,10 +647,8 @@
                 type === "maintenance" && editingMaintenance ? data.maintenance.find(i => i.id === editingMaintenance) : null;
             if (!service && type === "incident" && previous && $("incident-phase").value === "resolved" && $("incident-service").value === previous.serviceId) service = { id: previous.serviceId, name: previous.service };
             if (!service) return feedback("Choose an active service. To reopen an incident for a removed service, assign it to an existing service first.", true);
-            const item = {
-                ...previous, id: previous?.id || crypto.randomUUID(), title, message,
-                serviceId: service.id, service: service.name, source: "PTG", start: previous?.start || new Date().toISOString()
-            };
+            const item = { ...previous, id: previous?.id || crypto.randomUUID(), title, message,
+                serviceId: service.id, service: service.name, source: "PTG", start: previous?.start || new Date().toISOString() };
             if (type === "maintenance") {
                 const start = new Date($("maintenance-start").value), end = new Date($("maintenance-end").value);
                 if (!(end > start)) return feedback("Maintenance must end after its start time.", true);
@@ -571,9 +676,31 @@
         if (changedForms.has("maintenance-form") && !confirm("Clear the unsaved maintenance form?")) return;
         resetMaintenanceForm();
     });
+    $("timeline-form").addEventListener("submit", event => {
+        event.preventDefault();
+        const item = editingTimeline && data.incidents.find(incident => incident.id === editingTimeline.incidentId);
+        const index = item?.updates?.findIndex(update => update.id === editingTimeline.updateId) ?? -1;
+        if (!item || index < 0) return closeTimelineEditor();
+        const message = $("timeline-message").value.trim();
+        if (!message) return feedback("Enter an update message.", true);
+        const next = $("timeline-next-update").value;
+        const correction = { id: editingTimeline.updateId, message, phase: $("timeline-phase").value,
+            impact: $("timeline-impact").value, workaround: $("timeline-workaround").value.trim(),
+            nextUpdateAt: next ? new Date(next).toISOString() : "" };
+        item.updates[index] = { ...item.updates[index], ...correction };
+        const original = baseline.incidents.find(incident => incident.id === item.id)?.updates?.find(update => update.id === correction.id);
+        const fields = ["message", "phase", "impact", "workaround", "nextUpdateAt"];
+        const changed = fields.some(field => (correction[field] || "") !== (original?.[field] || ""));
+        item.updateCorrections = (item.updateCorrections || []).filter(entry => entry.id !== correction.id);
+        if (changed) item.updateCorrections.push(correction);
+        closeTimelineEditor(); renderEvents("incidents"); counts(); markDirty();
+        feedback(changed ? "Published update correction staged. Publish changes to make it live." : "The correction matched the published update, so no change was staged.");
+    });
+    $("timeline-close").addEventListener("click", closeTimelineEditor);
+    $("timeline-cancel").addEventListener("click", closeTimelineEditor);
     $("publish").addEventListener("click", () => {
         if (changedForms.size) return feedback("Save or cancel your open form changes before publishing the draft.", true);
-        if (data.services.some(s => s.monitor?.credentialsChanged && !credentialEdits.has(s.id))) return feedback("Re-enter API credentials for the recovered draft before publishing, or explicitly remove saved credentials.", true);
+        if(data.services.some(s=>s.monitor?.credentialsChanged&&!credentialEdits.has(s.id)))return feedback("Re-enter API credentials for the recovered draft before publishing, or explicitly remove saved credentials.",true);
         run(async () => {
             const result = await request("PUT");
             clearRecovery(); credentialEdits.clear();
@@ -593,8 +720,8 @@
     $("disconnect").addEventListener("click", () => {
         if (hasUnsaved() && !confirm("Discard unpublished changes and disconnect?")) return;
         clearRecovery(); credentialEdits.clear();
-        $("service-api-key").value = ""; $("service-api-auth").value = "";
-        accountRequest("logout", "POST").catch(() => { }); clearUserForm(); $("users-list").replaceChildren(); $("users-feedback").textContent = ""; $("login-password").value = "";
+        $("service-api-key").value="";$("service-api-auth").value="";
+        accountRequest("logout", "POST").catch(() => {}); clearUserForm(); $("users-list").replaceChildren(); $("users-feedback").textContent = ""; $("login-password").value = "";
         key = ""; data = null; baseline = null; revision = ""; dirty = false; publicIssues = []; changedForms.clear();
         $("editor").hidden = true; $("connection").hidden = false; $("admin-key").value = "";
         $("published").textContent = "Connect to load"; $("published").removeAttribute("datetime");
@@ -634,27 +761,25 @@
         const old = data.services.find(s => s.id === editingService);
         const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 50) || "service";
         const mode = $("service-check-type").value;
-        const monitor = mode === "manual" ? null : { type: mode, target: $("service-check-target").value.trim(), interval: Number($("service-check-interval").value), paused: $("service-check-paused").checked, ...(mode === "tcp" ? { port: Number($("service-check-port").value) } : {}), ...(mode === "supabase" ? { projectRef: $("service-supabase-project").value, services: [...document.querySelectorAll(".service-supabase-service:checked")].map(input => input.value) } : {}) };
-        if (mode === "supabase" && !monitor.services.length) return feedback("Select at least one Supabase service to monitor.", true);
-        if (monitor && !["http", "supabase"].includes(mode) && (!/^(?:\d{1,3}\.){3}\d{1,3}$/.test(monitor.target) || monitor.target.split(".").some(n => Number(n) > 255))) return feedback("Enter a valid internal IPv4 address for the health check.", true);
-        const item = {
-            ...old, monitor, id: old?.id || slug + "-" + crypto.randomUUID().slice(0, 8), name, description,
-            group: $("service-group").value.trim(), order: Number($("service-order").value), status, statusText: labels[status], source: "PTG"
-        };
+        const monitor = mode === "manual" ? null : {type:mode,target:$("service-check-target").value.trim(),interval:Number($("service-check-interval").value),paused:$("service-check-paused").checked,...(mode==="tcp"?{port:Number($("service-check-port").value)}:{}),...(mode==="supabase"?{projectRef:$("service-supabase-project").value,services:[...document.querySelectorAll(".service-supabase-service:checked")].map(input=>input.value)}:{})};
+        if (mode === "supabase" && !monitor.services.length) return feedback("Select at least one Supabase service to monitor.",true);
+        if (monitor && !["http","supabase"].includes(mode) && (!/^(?:\d{1,3}\.){3}\d{1,3}$/.test(monitor.target) || monitor.target.split(".").some(n=>Number(n)>255))) return feedback("Enter a valid internal IPv4 address for the health check.",true);
+        const item = { ...old, monitor, id: old?.id || slug + "-" + crypto.randomUUID().slice(0, 8), name, description,
+            group: $("service-group").value.trim(), order: Number($("service-order").value), status, statusText: labels[status], source: "PTG" };
         if (mode === "http") {
-            let url; try { url = new URL(monitor.target); } catch { return feedback("Enter a plain HTTP/HTTPS API URL, without Markdown formatting.", true); }
-            if (!["http:", "https:"].includes(url.protocol)) return feedback("Use an HTTP/HTTPS URL.", true);
-            monitor.expectedText = $("service-api-expect").value;
-            monitor.method = $("service-api-method").value;
-            monitor.hasApiKey = old?.monitor?.hasApiKey || false; monitor.hasAuthorization = old?.monitor?.hasAuthorization || false;
-            const apiKey = $("service-api-key").value, authorization = $("service-api-auth").value;
-            if (apiKey || authorization || $("service-api-clear").checked) {
-                const edits = $("service-api-clear").checked ? { apiKey: "", authorization: "" } : { ...(credentialEdits.get(item.id) || {}) };
-                if (apiKey) edits.apiKey = apiKey; if (authorization) edits.authorization = authorization;
-                credentialEdits.set(item.id, edits); monitor.credentialsChanged = crypto.randomUUID();
-            } else if (old?.monitor?.credentialsChanged) monitor.credentialsChanged = old.monitor.credentialsChanged;
+            let url;try{url=new URL(monitor.target);}catch{return feedback("Enter a plain HTTP/HTTPS API URL, without Markdown formatting.",true);}
+            if(!["http:","https:"].includes(url.protocol))return feedback("Use an HTTP/HTTPS URL.",true);
+            monitor.expectedText=$("service-api-expect").value;
+            monitor.method=$("service-api-method").value;
+            monitor.hasApiKey=old?.monitor?.hasApiKey||false;monitor.hasAuthorization=old?.monitor?.hasAuthorization||false;
+            const apiKey=$("service-api-key").value, authorization=$("service-api-auth").value;
+            if(apiKey||authorization||$("service-api-clear").checked){
+                const edits=$("service-api-clear").checked?{apiKey:"",authorization:""}:{...(credentialEdits.get(item.id)||{})};
+                if(apiKey)edits.apiKey=apiKey;if(authorization)edits.authorization=authorization;
+                credentialEdits.set(item.id,edits);monitor.credentialsChanged=crypto.randomUUID();
+            } else if(old?.monitor?.credentialsChanged)monitor.credentialsChanged=old.monitor.credentialsChanged;
         } else credentialEdits.delete(item.id);
-        $("service-api-key").value = ""; $("service-api-auth").value = "";
+        $("service-api-key").value="";$("service-api-auth").value="";
         if (old) data.services[data.services.findIndex(s => s.id === old.id)] = item;
         else data.services.push(item);
         for (const incident of data.incidents) if (incident.serviceId === item.id && incident.phase !== "resolved") incident.service = name;
@@ -721,35 +846,35 @@
 
     function checkFields() {
         const mode = $("service-check-type").value;
-        $("service-check-target").required = ["ping", "tcp", "http"].includes(mode);
+        $("service-check-target").required = ["ping","tcp","http"].includes(mode);
         $("service-check-port").required = mode === "tcp";
         $("service-api-fields").hidden = mode !== "http";
         $("service-supabase-fields").hidden = mode !== "supabase";
     }
     $("service-check-type").addEventListener("change", checkFields);
     function renderHealthResults() {
-        if (!data) return;
-        document.querySelectorAll("[data-health-service]").forEach(el => {
-            const service = data.services.find(s => s.id === el.dataset.healthService), config = service?.monitor;
-            if (!config) { el.textContent = "Manual availability"; return; }
-            if (config.paused) { el.textContent = "Checks paused · saved availability is shown"; return; }
-            if (JSON.stringify(config) !== JSON.stringify(baseline?.services.find(s => s.id === service.id)?.monitor)) { el.textContent = "Health check changes awaiting publication"; return; }
-            const state = healthResults[service.id];
-            const target = config.type === "supabase" ? config.projectRef : config.target;
-            el.textContent = config.type.toUpperCase() + " · " + target + (config.port ? ":" + config.port : "") + " · " + (!state ? "Waiting for background checks" : (state.stale ? "Results are stale" : state.message) + " · " + format(state.checkedAt) + " · " + state.successes + " consecutive successes / " + state.failures + " failures" + (state.latencyMs !== null ? " · " + state.latencyMs + "ms" : ""));
+        if(!data) return;
+        document.querySelectorAll("[data-health-service]").forEach(el=>{
+            const service=data.services.find(s=>s.id===el.dataset.healthService), config=service?.monitor;
+            if(!config){el.textContent="Manual availability";return;}
+            if(config.paused){el.textContent="Checks paused · saved availability is shown";return;}
+            if(JSON.stringify(config)!==JSON.stringify(baseline?.services.find(s=>s.id===service.id)?.monitor)){el.textContent="Health check changes awaiting publication";return;}
+            const state=healthResults[service.id];
+            const target=config.type==="supabase"?config.projectRef:config.target;
+            el.textContent=config.type.toUpperCase()+" · "+target+(config.port?":"+config.port:"")+" · "+(!state?"Waiting for background checks":(state.stale?"Results are stale":state.message)+" · "+format(state.checkedAt)+" · "+state.successes+" consecutive successes / "+state.failures+" failures"+(state.latencyMs!==null?" · "+state.latencyMs+"ms":""));
         });
     }
-    async function loadHealthResults() {
-        if (!key || !data) return;
+    async function loadHealthResults(){
+        if(!key||!data)return;
         try {
-            const response = await fetch("/api/admin/checks", { headers: { Authorization: "Bearer " + key }, cache: "no-store", signal: AbortSignal.timeout(10000) });
-            if (!response.ok) throw new Error("Unavailable");
-            healthResults = (await response.json()).checks || {}; renderHealthResults();
+            const response=await fetch("/api/admin/checks",{headers:{Authorization:"Bearer "+key},cache:"no-store",signal:AbortSignal.timeout(10000)});
+            if(!response.ok)throw new Error("Unavailable");
+            healthResults=(await response.json()).checks||{};renderHealthResults();
         } catch {
-            document.querySelectorAll("[data-health-service]").forEach(el => { if (data?.services.find(s => s.id === el.dataset.healthService)?.monitor) el.textContent = "Monitoring results unavailable; reconnect or check the server."; });
+            document.querySelectorAll("[data-health-service]").forEach(el=>{if(data?.services.find(s=>s.id===el.dataset.healthService)?.monitor)el.textContent="Monitoring results unavailable; reconnect or check the server.";});
         }
     }
-    window.setInterval(() => { if (!busy) void loadHealthResults(); }, 30000);
+    window.setInterval(()=>{if(!busy)void loadHealthResults();},30000);
 
     function renderAnnouncement() {
         const a = data.announcement;
@@ -765,7 +890,7 @@
         const title = $("announcement-title").value.trim(), message = $("announcement-message").value.trim();
         if (!title || !message) return feedback("Enter an announcement title and message.", true);
         const expiry = $("announcement-expiry").value;
-        data.announcement = { title, message, level: $("announcement-level").value, expiresAt: expiry ? new Date(expiry).toISOString() : "" };
+        data.announcement = {title, message, level: $("announcement-level").value, expiresAt: expiry ? new Date(expiry).toISOString() : ""};
         changedForms.delete("announcement-form"); markDirty(); feedback("Announcement staged. Publish to display the banner.");
     });
     $("announcement-cancel").addEventListener("click", renderAnnouncement);
@@ -776,7 +901,7 @@
     const draftKey = "ptg-admin-draft-v1";
     let recovery = null;
     function clearRecovery() {
-        try { localStorage.removeItem(draftKey); } catch { }
+        try { localStorage.removeItem(draftKey); } catch {}
         recovery = null; $("draft-recovery").hidden = true;
     }
     function persistDraft() {
@@ -786,9 +911,9 @@
             const forms = {};
             for (const id of changedForms) {
                 const form = $(id); if (!form) continue;
-                forms[id] = [...form.querySelectorAll("input,select,textarea")].filter(el => el.id && el.type !== "password").map(el => ({ id: el.id, value: el.value, checked: el.checked }));
+                forms[id] = [...form.querySelectorAll("input,select,textarea")].filter(el => el.id && el.type !== "password").map(el => ({id:el.id,value:el.value,checked:el.checked}));
             }
-            localStorage.setItem(draftKey, JSON.stringify({ version: 1, savedAt: new Date().toISOString(), revision, data, baseline, forms, editingId, editingMaintenance, editingService }));
+            localStorage.setItem(draftKey, JSON.stringify({version:1,savedAt:new Date().toISOString(),revision,data,baseline,forms,editingId,editingMaintenance,editingService}));
             $("draft-storage").textContent = "Draft saved in this browser at " + formatTime(new Date()) + ". The admin key is not saved. Disconnect clears this copy.";
         } catch {
             $("draft-storage").textContent = "This browser could not save the draft. Keep this tab open until you publish.";
@@ -808,17 +933,17 @@
     $("discard-draft").addEventListener("click", () => { clearRecovery(); feedback("Saved recovery copy discarded."); });
     $("download-draft").addEventListener("click", () => {
         if (!recovery) return;
-        const url = URL.createObjectURL(new Blob([JSON.stringify(recovery, null, 2)], { type: "application/json" }));
-        const link = document.createElement("a"); link.href = url; link.download = "ptg-unpublished-draft.json"; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+        const url = URL.createObjectURL(new Blob([JSON.stringify(recovery,null,2)], {type:"application/json"}));
+        const link = document.createElement("a"); link.href = url; link.download = "ptg-unpublished-draft.json"; link.click(); setTimeout(()=>URL.revokeObjectURL(url),1000);
     });
     $("restore-draft").addEventListener("click", () => {
         if (!recovery || recovery.revision !== revision) return;
         if (hasUnsaved() && !confirm("Replace current edits with the saved draft?")) return;
         const saved = recovery; recovery = null;
         data = saved.data; render(); baseline = saved.baseline;
-        if (saved.editingId) { const item = data.incidents.find(i => i.id === saved.editingId); if (item) editIncident(item); }
-        if (saved.editingMaintenance) { const item = data.maintenance.find(i => i.id === saved.editingMaintenance); if (item) editMaintenance(item); }
-        if (saved.forms["service-form"]) editService(data.services.find(i => i.id === saved.editingService));
+        if (saved.editingId) { const item = data.incidents.find(i=>i.id===saved.editingId); if (item) editIncident(item); }
+        if (saved.editingMaintenance) { const item = data.maintenance.find(i=>i.id===saved.editingMaintenance); if (item) editMaintenance(item); }
+        if (saved.forms["service-form"]) editService(data.services.find(i=>i.id===saved.editingService));
         for (const [id, fields] of Object.entries(saved.forms)) {
             if (!$(id)) continue;
             for (const field of fields) { const el = $(field.id); if (el && $(id).contains(el) && el.type !== "password") { el.value = field.value; if (el.type === "checkbox") el.checked = field.checked; } }

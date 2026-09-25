@@ -72,18 +72,12 @@
             </section>
             <p id="draft-storage" class="help" role="status">Unpublished edits are saved in this browser. The admin key is never saved.</p>
 
-            <section class="metrics" aria-label="Published content">
-                <div class="metric"><strong id="service-total">0</strong><span>PTG-managed services</span></div>
-                <div class="metric"><strong id="incident-total">0</strong><span>Active incidents</span></div>
-                <div class="metric"><strong id="maintenance-total">0</strong><span>Maintenance notices</span></div>
-                <div class="metric"><strong id="save-state">Published</strong><span>Workspace state</span></div>
-            </section>
-
             <div class="admin-shell workspace-layout">
                 <aside class="admin-rail" aria-label="Administration sections">
                     <p class="kicker">Workspace</p>
                     <div class="admin-tabs" role="tablist" aria-label="Administration sections">
-                        <button type="button" role="tab" aria-selected="true" aria-controls="manage-services" data-admin-tab="manage-services">Service health</button>
+                        <button type="button" role="tab" aria-selected="true" aria-controls="admin-overview" data-admin-tab="admin-overview">Overview</button>
+                        <button type="button" role="tab" aria-selected="false" aria-controls="manage-services" data-admin-tab="manage-services">Service health</button>
                         <button type="button" role="tab" aria-selected="false" aria-controls="manage-incidents" data-admin-tab="manage-incidents">Incidents &amp; updates</button>
                         <button type="button" role="tab" aria-selected="false" aria-controls="manage-maintenance" data-admin-tab="manage-maintenance">Maintenance</button>
                         <button type="button" role="tab" aria-selected="false" aria-controls="manage-microsoft" data-admin-tab="manage-microsoft">Microsoft impact</button>
@@ -95,7 +89,59 @@
                 </aside>
 
                 <div class="admin-content">
-                    <section class="attention-panel" aria-labelledby="attention-title"><div><p class="kicker">At a glance</p><h2 id="attention-title">Needs attention</h2></div><div id="attention-items"></div></section>
+                    <section id="admin-overview" class="section control-centre" aria-labelledby="control-centre-title">
+                        <div class="control-centre-heading"><div><p class="kicker">Operations overview</p><h2 id="control-centre-title">Status control centre</h2><p>Current service health, communications and publishing activity in one place.</p></div><span id="dashboard-live-state" class="control-live-state">Live workspace</span></div>
+
+                        <div class="metrics control-metrics" aria-label="Current status totals">
+                            <button class="metric control-metric" type="button" data-open-admin-tab="manage-services"><strong id="service-total">0</strong><span>PTG-managed services</span></button>
+                            <button class="metric control-metric" type="button" data-open-admin-tab="manage-incidents"><strong id="incident-total">0</strong><span>Active incidents</span></button>
+                            <button class="metric control-metric" type="button" data-open-admin-tab="manage-maintenance"><strong id="maintenance-total">0</strong><span>Maintenance notices</span></button>
+                            <button class="metric control-metric" type="button" data-open-admin-tab="review-changes"><strong id="save-state">Published</strong><span>Workspace state</span></button>
+                        </div>
+
+                        <div class="control-grid">
+                            <article class="control-card">
+                                <div class="control-card-heading"><div><p class="kicker">Availability</p><h3>Service health</h3></div><button class="secondary compact-action" type="button" data-open-admin-tab="manage-services">Manage</button></div>
+                                <dl class="health-breakdown">
+                                    <div class="health-row operational"><dt>Operational</dt><dd id="dashboard-operational">0</dd></div>
+                                    <div class="health-row affected"><dt>Needs attention</dt><dd id="dashboard-affected">0</dd></div>
+                                    <div class="health-row unknown"><dt>Status unavailable</dt><dd id="dashboard-unknown">0</dd></div>
+                                </dl>
+                            </article>
+
+                            <article class="control-card">
+                                <div class="control-card-heading"><div><p class="kicker">Communications</p><h3>Public messaging</h3></div><button class="secondary compact-action" type="button" data-open-admin-tab="manage-announcement">Manage</button></div>
+                                <p id="dashboard-announcement" class="control-primary">No site-wide announcement</p>
+                                <p id="dashboard-announcement-detail" class="control-detail">The public banner is currently clear.</p>
+                            </article>
+
+                            <article class="control-card">
+                                <div class="control-card-heading"><div><p class="kicker">Incident response</p><h3>Current activity</h3></div><button class="secondary compact-action" type="button" data-open-admin-tab="manage-incidents">Open incidents</button></div>
+                                <p id="dashboard-incident-summary" class="control-primary">No active incidents</p>
+                                <p id="dashboard-incident-detail" class="control-detail">There are no active PTG incident notices.</p>
+                            </article>
+
+                            <article class="control-card">
+                                <div class="control-card-heading"><div><p class="kicker">Planned work</p><h3>Maintenance window</h3></div><button class="secondary compact-action" type="button" data-open-admin-tab="manage-maintenance">Schedule</button></div>
+                                <p id="dashboard-maintenance-summary" class="control-primary">No upcoming maintenance</p>
+                                <p id="dashboard-maintenance-detail" class="control-detail">No scheduled window is currently active or upcoming.</p>
+                            </article>
+
+                            <section class="attention-panel control-attention" aria-labelledby="attention-title"><div><p class="kicker">Action queue</p><h3 id="attention-title">Needs attention</h3></div><div id="attention-items"></div></section>
+
+                            <article class="control-card control-publishing">
+                                <div><p class="kicker">Publishing</p><h3>Workspace activity</h3></div>
+                                <p class="control-primary"><strong id="dashboard-change-total">0</strong> staged changes</p>
+                                <p class="control-detail">Last published <span id="dashboard-published">Not set</span></p>
+                                <div class="actions"><button class="secondary" type="button" data-open-admin-tab="review-changes">Review draft</button><button type="button" data-open-admin-tab="manage-services">Update services</button></div>
+                            </article>
+
+                            <article class="control-card control-shortcuts">
+                                <div><p class="kicker">Quick actions</p><h3>Open a control</h3></div>
+                                <div class="quick-control-grid"><button type="button" data-open-admin-tab="manage-incidents">Create incident</button><button type="button" data-open-admin-tab="manage-maintenance">Schedule maintenance</button><button type="button" data-open-admin-tab="manage-announcement">Post announcement</button><button class="secondary" type="button" data-open-admin-tab="manage-microsoft">Assess Microsoft impact</button></div>
+                            </article>
+                        </div>
+                    </section>
 
                     <section id="manage-services" class="section" aria-labelledby="services-title">
                         <div class="section-head"><div><p class="kicker">Workplace technology</p><h2 id="services-title">Service health</h2><p>Set PTG service availability. Microsoft cloud health is managed automatically.</p></div><div class="actions"><span class="count">PTG managed</span><button id="add-service" type="button">Add service</button></div></div>
@@ -105,7 +151,7 @@
 
                     <div class="notice-workspace">
                         <section id="manage-incidents" class="section panel" aria-labelledby="incidents-title">
-                            <p class="kicker">Communications</p><h2 id="incidents-title">Incident notices</h2><p class="help">Edit an incident to add updates or move it to resolved.</p>
+                            <p class="kicker">Communications</p><h2 id="incidents-title">Incident notices</h2><p class="help">Edit a published notice, add an update, or correct an existing timeline entry.</p>
                             <div class="notice-layout">
                                 <div><div class="list-toolbar"><label for="incident-search">Find an incident<input id="incident-search" type="search" placeholder="Search title or service"></label><label for="incident-filter">Stage<select id="incident-filter"><option value="all">All stages</option><option value="investigating">Investigating</option><option value="identified">Identified</option><option value="monitoring">Monitoring</option><option value="resolved">Resolved</option></select></label></div><div id="incidents"></div></div>
                                 <div class="editor-pane">
@@ -158,7 +204,7 @@
                         <form id="announcement-form" novalidate>
                             <label for="announcement-title">Title</label><input id="announcement-title" type="text" maxlength="120">
                             <label for="announcement-message">Message</label><textarea id="announcement-message" rows="5" maxlength="1000"></textarea>
-                            <label for="announcement-level">Style</label><select id="announcement-level"><option value="info">Information</option><option value="warning">Warning</option><option value="success">Success</option><option value="maintenance">Maintenance</option></select>
+                            <label for="announcement-level">Style</label><select id="announcement-level"><option value="info">Information</option><option value="urgent">Urgent</option><option value="success">Success</option><option value="maintenance">Maintenance</option></select>
                             <label for="announcement-expiry">Expires</label><input id="announcement-expiry" type="datetime-local">
                             <div class="actions"><button type="submit">Stage announcement</button><button id="announcement-cancel" class="secondary" type="button">Reset form</button><button id="announcement-remove" class="secondary" type="button">Remove announcement</button></div>
                         </form>
@@ -224,6 +270,20 @@
                     </div>
                 </fieldset>
                 <div class="actions"><button type="submit">Save service to draft</button><button id="cancel-service-bottom" class="secondary" type="button" onclick="document.getElementById('cancel-service').click()">Cancel</button></div>
+            </form>
+        </dialog>
+
+        <dialog id="timeline-editor" aria-labelledby="timeline-editor-title">
+            <form id="timeline-form" novalidate>
+                <div class="section-head"><div><p class="kicker">Published incident history</p><h2 id="timeline-editor-title">Correct timeline update</h2></div><button id="timeline-close" class="secondary" type="button">Close</button></div>
+                <p class="help">The original publication time is retained. Corrections stay in the draft until you publish.</p>
+                <p><strong>Published:</strong> <time id="timeline-published"></time></p>
+                <label for="timeline-message">Update message</label><textarea id="timeline-message" rows="5" maxlength="5000" required></textarea>
+                <label for="timeline-phase">Stage</label><select id="timeline-phase"><option value="investigating">Investigating</option><option value="identified">Identified</option><option value="monitoring">Monitoring</option><option value="resolved">Resolved</option></select>
+                <label for="timeline-impact">PTG impact</label><select id="timeline-impact"><option value="unknown">Impact not confirmed</option><option value="confirmed">Affecting PTG</option><option value="not-affected">No PTG impact confirmed</option></select>
+                <label for="timeline-workaround">Workaround at this update</label><textarea id="timeline-workaround" rows="3" maxlength="3000"></textarea>
+                <label for="timeline-next-update">Next update expected at the time</label><input id="timeline-next-update" type="datetime-local">
+                <div class="actions"><button type="submit">Save correction to draft</button><button id="timeline-cancel" class="secondary" type="button">Cancel</button></div>
             </form>
         </dialog>
 

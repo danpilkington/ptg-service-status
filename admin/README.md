@@ -10,8 +10,11 @@ Concurrent updates are rejected to prevent overwriting another administrator.
 This workspace uses a shared key, not Entra authentication or an attributed audit log.
 See ../README.md for hosting and testing.
 
+## Control centre
+The Overview tab is the administration landing page. It summarises PTG service availability, active incidents, the current site announcement, active or upcoming maintenance, overdue actions and unpublished changes. Summary cards and quick actions open the relevant editor; all changes continue to use the existing draft, review and publish workflow.
+
 ## Incident workflow
-Create a notice with stage, PTG impact, workaround and optional next-update time, then Add incident to draft. Use Edit / add update to change its details or stage and add a timeline message. Save incident to draft before publishing. Choosing Resolved moves the published incident to public history; it remains editable in the resolved history section. A published incident cannot be deleted.
+Create a notice with stage, PTG impact, workaround and optional next-update time, then Add incident to draft. Use Edit / add update to change its details or stage and add a timeline message. Published timeline entries can be corrected or staged for deletion; deletions can be undone until the draft is published. Corrections retain the original server-issued identity and publication time. Save changes to the draft before publishing. Choosing Resolved moves the published incident to public history; it remains editable in the resolved history section. A published incident cannot be deleted.
 
 ## Microsoft assessments
 Refresh Microsoft issues to load the provider feed. Open an issue and select its PTG impact, note and guidance. Save assessment to draft, then publish. Provider availability remains unchanged. Missing Microsoft connectivity does not prevent PTG incident editing. Previously saved assessments are preserved.
