@@ -371,34 +371,34 @@
             card.querySelector(".managed-status-icon").textContent = "?";
         });
     }
-    let refreshing = false, refreshTimer = null, nextRefreshAt = 0, lastRefreshFailed = false;
-    const countdown = document.getElementById("refresh-countdown");
+let refreshing = false, refreshTimer = null, nextRefreshAt = 0, lastRefreshFailed = false;
+const countdown = document.getElementById("refresh-countdown");
 
-    function updateCountdown() {
-        if (!countdown) return;
+function updateCountdown() {
+    if (!countdown) return;
 
-        if (refreshing) {
-            countdown.textContent = "Checking for updates…";
-            countdown.classList.remove("countdown-warning");
-            return;
-        }
-
-        const totalSeconds = Math.max(
-            0,
-            Math.ceil((nextRefreshAt - Date.now()) / 1000)
-        );
-
-        const minutes = Math.floor(totalSeconds / 60);
-        const seconds = totalSeconds % 60;
-
-        countdown.textContent =
-            (lastRefreshFailed ? "Retrying in " : "Next refresh in ") +
-            minutes + "m " +
-            seconds.toString().padStart(2, "0") + "s";
-
-        // Start pulsing red at 10 seconds or below
-        countdown.classList.toggle("countdown-warning", totalSeconds <= 10);
+    if (refreshing) {
+        countdown.textContent = "Checking for updates…";
+        countdown.classList.remove("countdown-warning");
+        return;
     }
+
+    const totalSeconds = Math.max(
+        0,
+        Math.ceil((nextRefreshAt - Date.now()) / 1000)
+    );
+
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+
+    countdown.textContent =
+        (lastRefreshFailed ? "Retrying in " : "Next refresh in ") +
+        minutes + "m " +
+        seconds.toString().padStart(2, "0") + "s";
+
+    // Start pulsing red at 10 seconds or below
+    countdown.classList.toggle("countdown-warning", totalSeconds <= 10);
+}
     async function refresh() {
         if (refreshing) return;
         refreshing = true;

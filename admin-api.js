@@ -12,7 +12,7 @@ module.exports = function attachAdmin(app, { statusFile, monitor, key = process.
     app.get("/api/admin/status", async (req, res, next) => {
         try {
             const raw = await storage.read("status");
-            res.json({ data: health.redact(JSON.parse(raw)), revision: revision(raw), editorVersion: 5 });
+            res.json({ data: health.redact(JSON.parse(raw)), revision: revision(raw), editorVersion: 7 });
         } catch (error) { next(error); }
     });
     app.get("/api/admin/checks", async (req,res,next)=>{
@@ -52,7 +52,7 @@ module.exports = function attachAdmin(app, { statusFile, monitor, key = process.
             catch(error){return res.status(400).json({error:error.message});}
             const announcement = input.announcement === undefined ? current.announcement || null : input.announcement;
             if (announcement !== null && (!validText(announcement.title, 160) || !validText(announcement.message, 2000) ||
-                !["info", "warning", "urgent"].includes(announcement.level) ||
+                !["info", "warning", "success", "maintenance", "urgent"].includes(announcement.level) ||
                 (announcement.expiresAt && !model.isDate(announcement.expiresAt)))) {
                 return res.status(400).json({error: "Check the announcement title, message, tone and expiry."});
             }
@@ -64,7 +64,9 @@ module.exports = function attachAdmin(app, { statusFile, monitor, key = process.
                 if (!uniqueItems(items, type === "incidents" ? 500 : 100) ||
                     items.some(i => !validText(i.title, 160) || !validText(i.message, 5000) ||
                         (!ids.has(i.serviceId) && !(type === "incidents" && historicalReference(i))) || !model.isDate(i.start) ||
-                        (type === "incidents" && !model.validDetails(i)) ||
+                        (type === "incidents" && (!model.validDetails(i) || !model.validUpdateCorrections(i.updateCorrections,
+                            ((current.incidents || []).find(old => old.id === i.id)?.updates || [])) || !model.validUpdateDeletions(i.deletedUpdateIds,
+                            ((current.incidents || []).find(old => old.id === i.id)?.updates || []), i.updateCorrections))) ||
                         (type === "maintenance" && ((i.autoStatus !== undefined && typeof i.autoStatus !== "boolean") || !model.isDate(i.end) || Date.parse(i.end) <= Date.parse(i.start))))) {
                     return res.status(400).json({ error: "Check notice details and dates. Resolve or reassign active incidents and remove or reassign maintenance before removing a service. Maintenance must end after it starts." });
                 }

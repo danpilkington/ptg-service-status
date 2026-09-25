@@ -5,6 +5,7 @@ const impacts = ["unknown", "confirmed", "not-affected"];
 const optionalText = (value, max) => value === undefined || (typeof value === "string" && value.length <= max);
 const isDate = value => typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value) && Number.isFinite(Date.parse(value));
 const clean = value => typeof value === "string" ? value.trim() : "";
+const correctionFields = ["message", "phase", "impact", "workaround", "nextUpdateAt"];
 function validDetails(item) {
     return (!item.phase || phases.includes(item.phase)) &&
         (item.impact === undefined || impacts.includes(item.impact)) &&
@@ -15,6 +16,33 @@ function normaliseIncident(item) {
     return { ...item, phase: item.phase || "investigating", impact: item.impact || "unknown",
         workaround: item.workaround || "", nextUpdateAt: item.nextUpdateAt || "",
         updates: Array.isArray(item.updates) ? item.updates : [] };
+}
+function validUpdateCorrections(corrections, updates = []) {
+    if (corrections === undefined) return true;
+    if (!Array.isArray(corrections) || corrections.length > updates.length) return false;
+    const existing = new Set(updates.map(update => update.id));
+    return new Set(corrections.map(correction => correction?.id)).size === corrections.length && corrections.every(correction =>
+        correction && typeof correction.id === "string" && existing.has(correction.id) &&
+        typeof correction.message === "string" && correction.message.trim().length > 0 && correction.message.length <= 5000 &&
+        phases.includes(correction.phase) && impacts.includes(correction.impact) &&
+        optionalText(correction.workaround, 3000) &&
+        (correction.nextUpdateAt === "" || isDate(correction.nextUpdateAt)));
+}
+function validUpdateDeletions(deletions, updates = [], corrections = []) {
+    if (deletions === undefined) return true;
+    if (!Array.isArray(deletions) || deletions.length > updates.length || new Set(deletions).size !== deletions.length) return false;
+    const existing = new Set(updates.map(update => update.id));
+    const corrected = new Set((corrections || []).map(correction => correction.id));
+    return deletions.every(id => typeof id === "string" && existing.has(id) && !corrected.has(id));
+}
+function applyUpdateCorrections(updates, corrections) {
+    const byId = new Map((corrections || []).map(correction => [correction.id, correction]));
+    return updates.map(update => {
+        const correction = byId.get(update.id);
+        if (!correction) return update;
+        return { ...update, ...Object.fromEntries(correctionFields.map(field => [field,
+            field === "message" || field === "workaround" ? clean(correction[field]) : correction[field]])) };
+    });
 }
 function saveIncident(input, previous, service, now) {
     const before = previous && normaliseIncident(previous);
@@ -27,10 +55,14 @@ function saveIncident(input, previous, service, now) {
     if (result.phase === "resolved") result.nextUpdateAt = "";
     const changed = !before || ["title", "message", "serviceId", "phase", "impact", "workaround", "nextUpdateAt"].some(k => result[k] !== before[k]) || !!clean(input.pendingUpdate);
     // History is built from persisted data, never from client-supplied timestamps or updates.
-    const updates = before ? [...before.updates] : [];
+    let updates = before ? [...before.updates] : [];
     if (before && !updates.length) updates.push({ id: randomUUID(), at: before.updatedAt || before.start,
         phase: before.phase, impact: before.impact, message: before.message,
         workaround: before.workaround, nextUpdateAt: before.nextUpdateAt });
+    if (before) {
+        const deleted = new Set(input.deletedUpdateIds || []);
+        updates = applyUpdateCorrections(updates.filter(update => !deleted.has(update.id)), input.updateCorrections);
+    }
     if (changed) updates.push({ id: randomUUID(), at: now, phase: result.phase, impact: result.impact,
         message: clean(input.pendingUpdate) || result.message, workaround: result.workaround, nextUpdateAt: result.nextUpdateAt });
     result.updatedAt = changed ? now : before.updatedAt || before.start;
@@ -57,4 +89,4 @@ function applyAssessments(issues, assessments = []) {
             assessmentUpdatedAt: local?.updatedAt || "", updates: local?.updates || [] };
     });
 }
-module.exports = { phases, impacts, isDate, optionalText, validDetails, normaliseIncident, saveIncident, saveAssessment, applyAssessments };
+module.exports = { phases, impacts, isDate, optionalText, validDetails, validUpdateCorrections, validUpdateDeletions, applyUpdateCorrections, normaliseIncident, saveIncident, saveAssessment, applyAssessments };

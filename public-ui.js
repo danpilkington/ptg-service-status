@@ -33,7 +33,7 @@
         const grid = $("service-grid"), existing = new Map(cards.map(c => [c.dataset.service, c]));
         const seen = new Set();
         grid.querySelectorAll(".service-group-heading").forEach(el => el.remove());
-        const ordered = [...services].sort((a, b) => (a.source === "Microsoft" ? -1 : 0) - (b.source === "Microsoft" ? -1 : 0) || (a.order ?? 100) - (b.order ?? 100));
+        const ordered = [...services].sort((a,b) => (a.source === "Microsoft" ? -1 : 0) - (b.source === "Microsoft" ? -1 : 0) || (a.order ?? 100) - (b.order ?? 100));
         const groups = new Map();
         for (const service of ordered) { const group = service.source === "Microsoft" ? "Microsoft 365 Managed Services" : String(service.group || "Progressive Technology Managed Services").trim() || "Progressive Technology Managed Services"; if (!groups.has(group)) groups.set(group, []); groups.get(group).push(service); }
         let currentGroup = "";
@@ -222,8 +222,8 @@
     $("planned-activity").hidden = true;
     function openActivity(id) {
         if (id === "incident-history") {
-            $("history").focus({ preventScroll: true });
-            if (matchMedia("(max-width:1000px)").matches) $("incident-history").scrollIntoView({ block: "start" });
+            $("history").focus({preventScroll:true});
+            if (matchMedia("(max-width:1000px)").matches) $("incident-history").scrollIntoView({block:"start"});
             return;
         }
         $("support-view").hidden = id !== "support-view";
@@ -239,14 +239,14 @@
             if (link.hash === "#incident-history") return openActivity("incident-history");
             const target = link.hash === "#planned-activity" ? $("maintenance") : incidentBody;
             target.focus();
-            if (matchMedia("(max-width:1000px)").matches) target.scrollIntoView({ block: "start" });
+            if (matchMedia("(max-width:1000px)").matches) target.scrollIntoView({block:"start"});
         });
     });
-    try { const density = localStorage.getItem("ptg-dashboard-density"); if (["compact", "comfortable"].includes(density)) document.body.dataset.density = density; } catch { }
+    try { const density = localStorage.getItem("ptg-dashboard-density"); if (["compact","comfortable"].includes(density)) document.body.dataset.density = density; } catch {}
     $("dashboard-density").value = document.body.dataset.density;
     $("dashboard-density").addEventListener("change", event => {
         document.body.dataset.density = event.target.value;
-        try { localStorage.setItem("ptg-dashboard-density", event.target.value); } catch { }
+        try { localStorage.setItem("ptg-dashboard-density", event.target.value); } catch {}
     });
     window.PTGView = { renderItems, update, unavailable, syncServices };
 })();
