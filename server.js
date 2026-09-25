@@ -64,7 +64,8 @@ app.use(express.json({ limit: "2mb" }));
 const storage = require("./storage").createStorage({ statusFile: STATUS_FILE });
 const healthMonitor = require("./health-monitor").createMonitor(STATUS_FILE, undefined, storage);
 const freshserviceNotifier = require("./freshservice").createFreshserviceNotifier();
-let freshserviceTimer;
+const teamsNotifier = require("./teams-notifier").createTeamsNotifier();
+let statusAutomationTimer;
 app.locals.storage = storage;
 require("./admin-api")(app, { statusFile: STATUS_FILE, monitor: healthMonitor, storage });
 const publicFiles = new Set(["/", "/index.html", "/info.html", "/style.css", "/app.js", "/public-ui.js", "/admin/", "/admin/index.html", "/admin/style.css", "/admin/app.js"]);
@@ -525,6 +526,10 @@ app.get("/api/status", async (request, response) => {
         for (const ticket of result.created) console.log(`Freshservice ticket ${ticket.ticketId} created for service ${ticket.serviceId}.`);
         for (const ticket of result.recovered || []) console.log(`Freshservice ticket ${ticket.ticketId} moved to Awaiting Verification after service ${ticket.serviceId} recovered.`);
     }).catch(error => console.error("Freshservice ticket automation failed:", error.message));
+    void teamsNotifier.reconcile(uniqueServices).then(result => {
+        for (const alert of result.notified) console.log(`Microsoft Teams alert posted for service ${alert.serviceId}.`);
+        for (const recovery of result.recovered || []) console.log(`Microsoft Teams recovery posted for service ${recovery.serviceId}.`);
+    }).catch(error => console.error("Microsoft Teams notification automation failed:", error.message));
     const assessedMicrosoftIncidents = applyAssessments(microsoftIncidents, localStatus.microsoftAssessments);
     const localIncidents = localStatus.incidents.map(normaliseIncident);
     const responseBody = {
@@ -582,16 +587,16 @@ if (require.main === module) {
         const server = app.listen(PORT, HOST, () => {
             healthMonitor.start();
             console.log("PTG Status Page running at http://" + HOST + ":" + PORT + " (" + storage.kind + " storage)");
-            if (freshserviceNotifier.enabled) {
+            if (freshserviceNotifier.enabled || teamsNotifier.enabled) {
                 const internalHost = HOST === "0.0.0.0" ? "127.0.0.1" : HOST === "::" ? "[::1]" : HOST.includes(":") ? `[${HOST}]` : HOST;
                 const refresh = () => fetch(`http://${internalHost}:${server.address().port}/api/status`, { signal: AbortSignal.timeout(30000) })
                     .then(response => { if (!response.ok) throw new Error("status endpoint returned HTTP " + response.status); })
-                    .catch(error => console.error("Freshservice status refresh failed:", error.message));
-                freshserviceTimer = setInterval(refresh, 60000);
-                freshserviceTimer.unref();
+                    .catch(error => console.error("Status automation refresh failed:", error.message));
+                statusAutomationTimer = setInterval(refresh, 60000);
+                statusAutomationTimer.unref();
             }
         });
-        const stop = () => { clearInterval(freshserviceTimer); healthMonitor.stop(); server.close(() => storage.close().finally(() => process.exit(0))); };
+        const stop = () => { clearInterval(statusAutomationTimer); healthMonitor.stop(); server.close(() => storage.close().finally(() => process.exit(0))); };
         process.once("SIGINT", stop); process.once("SIGTERM", stop);
     })().catch(async error => {
         console.error("Website startup failed: " + error.message);

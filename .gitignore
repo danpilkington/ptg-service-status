@@ -6,4 +6,5 @@ node_modules/
 *.tmp
 users.json
 freshservice-state.json
+teams-state.json
 status.json
