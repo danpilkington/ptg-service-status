@@ -38,6 +38,32 @@ test("legacy notices remain readable and retain their original publication in th
     assert.equal(saved.updates[0].at, at);
 });
 
+test("published timeline corrections change content but preserve server-owned identity and time", () => {
+    const initial = model.saveIncident(input, null, "VPN", at);
+    const correction = { id: initial.updates[0].id, message: "Investigating VPN connectivity across several sites.",
+        phase: "identified", impact: "confirmed", workaround: "Use the office network.", nextUpdateAt: later };
+    assert.equal(model.validUpdateCorrections([correction], initial.updates), true);
+    assert.equal(model.validUpdateCorrections([{ ...correction, id: "unknown" }], initial.updates), false);
+    const corrected = model.saveIncident({ ...initial, updateCorrections: [correction] }, initial, "VPN", later);
+    assert.equal(corrected.updates.length, 1);
+    assert.equal(corrected.updates[0].id, initial.updates[0].id);
+    assert.equal(corrected.updates[0].at, at);
+    assert.equal(corrected.updates[0].message, correction.message);
+    assert.equal(corrected.updates[0].phase, "identified");
+});
+
+test("published timeline deletions remove only validated update IDs", () => {
+    const initial = model.saveIncident(input, null, "VPN", at);
+    const updated = model.saveIncident({ ...initial, pendingUpdate: "Gateway fault identified." }, initial, "VPN", later);
+    const removeId = updated.updates[0].id;
+    assert.equal(model.validUpdateDeletions([removeId], updated.updates), true);
+    assert.equal(model.validUpdateDeletions(["unknown"], updated.updates), false);
+    assert.equal(model.validUpdateDeletions([removeId], updated.updates, [{ id: removeId }]), false);
+    const result = model.saveIncident({ ...updated, pendingUpdate: "", deletedUpdateIds: [removeId] }, updated, "VPN", later);
+    assert.equal(result.updates.length, 1);
+    assert.equal(result.updates[0].id, updated.updates[1].id);
+});
+
 test("Microsoft local assessments do not change provider health or descriptions", () => {
     const issue = { id: "MS1", source: "Microsoft", status: "degraded", message: "Provider description" };
     const unknown = model.applyAssessments([issue])[0];

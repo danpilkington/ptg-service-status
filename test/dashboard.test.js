@@ -37,9 +37,15 @@ test("publishing validates and exposes groups, announcements and automatic windo
  for(const change of [s=>s.data.services[0].order=-1,s=>s.data.services[0].group="x".repeat(61),s=>s.data.announcement.level="invalid",s=>s.data.announcement.expiresAt="bad",s=>s.data.maintenance[0].autoStatus="yes"]){
   const bad=structuredClone(snapshot);change(bad);assert.equal((await put(bad)).status,400);
  }
- let response=await put(snapshot);assert.equal(response.status,200);snapshot=await response.json();
+ let response;
+ for(const level of ["info","warning","success","maintenance","urgent"]){
+  snapshot.data.announcement.level=level;
+  response=await put(snapshot);assert.equal(response.status,200,level);snapshot=await response.json();
+  assert.equal(snapshot.data.announcement.level,level);
+ }
  let pub=await (await fetch(base+"/api/status")).json();
  assert.equal(pub.announcement.title,"IT update");
+ assert.equal(pub.announcement.level,"urgent");
  assert.equal(pub.services.find(s=>s.id==="vpn").status,"maintenance");
  assert.equal(pub.services.find(s=>s.id==="vpn").group,"Connectivity");
  assert.equal(snapshot.data.services[0].status,"operational");
