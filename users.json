@@ -1,0 +1,32 @@
+[
+  {
+    "id": "33214bfb-4a39-43bc-82d3-b8ebb45cf1ab",
+    "username": "dan.pilkington",
+    "firstName": "Dan",
+    "lastName": "Pilkington",
+    "jobTitle": "IT Technician",
+    "role": "admin",
+    "active": true,
+    "passwordHash": "9182699c15c91c7612cf3bf3572dba22:a20ae67a9a660e22662e8a380340b7917de11376161afc7ccf0274185aeb15c0f16f8b23bba11a2c54fd80efd809718d123d61658301e7ded3cea8ec7aabff06"
+  },
+  {
+    "id": "2d5ba8f5-4346-4c4a-a557-2af04b89ac5a",
+    "username": "tom.nash",
+    "firstName": "Tom",
+    "lastName": "Nash",
+    "jobTitle": "Network and Systems Engineer",
+    "role": "admin",
+    "active": true,
+    "passwordHash": "31fb768b7a896c0771f92e3f05107339:1a431c18f873e9e7e305868a6f068c23b57bd7b8121213b9cb6cc0600c86f536c103810832df8f1dd0faa89de8aa5d42e599a7c78482419cbdcffd824bfaa728"
+  },
+  {
+    "id": "33a0a656-c120-4f2f-bf8a-9fd225da88be",
+    "username": "james.mason",
+    "firstName": "James",
+    "lastName": "Mason",
+    "jobTitle": "Chief Technology Officer",
+    "role": "admin",
+    "active": true,
+    "passwordHash": "59ba254c9d6c185d6b9a5b653ca5f625:1bb614ca4ca10efe47428966a88ce1fcc1c43dd5a13cb8c05f0712d6e9825bed36bd76fdede0dcc8a75621e5fd1994285cbc58adeb33c68ab2678c620efd9279"
+  }
+]

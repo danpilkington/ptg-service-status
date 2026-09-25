@@ -1,0 +1,144 @@
+{
+  "version": 1,
+  "services": {
+    "Microsoft:sharepoint-online": {
+      "active": false,
+      "status": "operational"
+    },
+    "Microsoft:onedrive": {
+      "active": false,
+      "status": "operational"
+    },
+    "Microsoft:intune": {
+      "active": false,
+      "status": "operational"
+    },
+    "PTG:company-portal": {
+      "active": false,
+      "status": "operational"
+    },
+    "PTG:vpn": {
+      "active": false,
+      "status": "operational"
+    },
+    "PTG:network": {
+      "active": false,
+      "status": "operational"
+    },
+    "PTG:meeting-rooms": {
+      "active": false,
+      "status": "operational"
+    },
+    "PTG:freshservice": {
+      "active": false,
+      "status": "operational"
+    },
+    "PTG:print-server-62c94c74": {
+      "active": false,
+      "status": "operational"
+    },
+    "PTG:building-access-controls-fe4fbe1c": {
+      "active": false,
+      "status": "operational"
+    },
+    "PTG:intune-dfed53e7": {
+      "active": false,
+      "status": "operational"
+    },
+    "PTG:dc4-b746bfc5": {
+      "active": false,
+      "status": "operational"
+    },
+    "PTG:dc3-f2b7218c": {
+      "active": false,
+      "status": "operational"
+    },
+    "PTG:dc5-99cf78f7": {
+      "active": false,
+      "status": "operational"
+    },
+    "PTG:dc6-18582eef": {
+      "active": false,
+      "status": "operational"
+    },
+    "PTG:atomic-supabase-50e6e994": {
+      "active": false,
+      "status": "operational"
+    },
+    "PTG:ps2-3cfb594a": {
+      "active": false,
+      "status": "operational"
+    },
+    "PTG:supabase-atomic": {
+      "active": false,
+      "status": "operational"
+    },
+    "PTG:supabase-hub": {
+      "active": false,
+      "status": "operational"
+    },
+    "PTG:epicor-main-22f972a2": {
+      "active": false,
+      "status": "operational"
+    },
+    "PTG:epicor-app-0cd35039": {
+      "active": false,
+      "status": "operational"
+    },
+    "PTG:epicor-bartender-af823ec4": {
+      "active": false,
+      "status": "operational"
+    },
+    "PTG:epicor-reports-729bd7d6": {
+      "active": false,
+      "status": "operational"
+    },
+    "PTG:epicor-database-6966f287": {
+      "active": false,
+      "status": "operational"
+    },
+    "PTG:timesheet-data-45acf53f": {
+      "active": false,
+      "status": "operational"
+    },
+    "PTG:tncremo-e0427230": {
+      "active": false,
+      "status": "operational"
+    },
+    "PTG:progress-dff4f071": {
+      "active": false,
+      "status": "operational"
+    },
+    "Microsoft:microsoft-365": {
+      "active": true,
+      "status": "degraded",
+      "notifiedAt": "2026-09-25T10:52:19.075Z"
+    },
+    "Microsoft:exchange-online": {
+      "active": true,
+      "status": "degraded",
+      "notifiedAt": "2026-09-25T10:52:19.419Z"
+    },
+    "Microsoft:microsoft-teams": {
+      "active": true,
+      "status": "degraded",
+      "notifiedAt": "2026-09-25T10:52:19.779Z"
+    },
+    "Microsoft:identity": {
+      "active": true,
+      "status": "degraded",
+      "notifiedAt": "2026-09-25T10:52:19.910Z"
+    },
+    "PTG:timesheet-service-63404be8": {
+      "active": false,
+      "status": "operational",
+      "notifiedAt": "2026-09-25T10:52:20.119Z",
+      "recoveredAt": "2026-09-25T10:54:18.577Z"
+    },
+    "PTG:hypermill-1f759485": {
+      "active": true,
+      "status": "degraded",
+      "notifiedAt": "2026-09-25T10:52:20.253Z"
+    }
+  }
+}

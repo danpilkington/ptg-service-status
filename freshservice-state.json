@@ -1,0 +1,225 @@
+{
+  "version": 1,
+  "services": {
+    "PTG:vpn": {
+      "active": false,
+      "status": "operational",
+      "recoveredAt": "2026-09-23T13:16:13.357Z"
+    },
+    "Microsoft:sharepoint-online": {
+      "active": false,
+      "status": "operational",
+      "recoveredAt": "2026-09-23T13:36:32.977Z"
+    },
+    "Microsoft:onedrive": {
+      "active": false,
+      "status": "operational",
+      "recoveredAt": "2026-09-23T13:36:32.989Z"
+    },
+    "Microsoft:intune": {
+      "active": false,
+      "status": "operational",
+      "recoveredAt": "2026-09-23T13:36:33.006Z"
+    },
+    "PTG:company-portal": {
+      "active": false,
+      "status": "operational",
+      "ticketId": 1455,
+      "createdAt": "2026-09-23T14:45:46.993Z",
+      "recoveredAt": "2026-09-23T14:47:51.816Z",
+      "recoveryNoteAdded": true,
+      "recoveryStatus": 11,
+      "recoveryCompletedAt": "2026-09-23T14:47:52.496Z"
+    },
+    "PTG:network": {
+      "active": false,
+      "status": "operational",
+      "recoveredAt": "2026-09-23T13:37:04.699Z"
+    },
+    "PTG:meeting-rooms": {
+      "active": false,
+      "status": "operational",
+      "recoveredAt": "2026-09-23T13:37:20.127Z"
+    },
+    "PTG:freshservice": {
+      "active": false,
+      "status": "operational",
+      "recoveredAt": "2026-09-23T13:37:20.140Z"
+    },
+    "PTG:print-server-62c94c74": {
+      "active": false,
+      "status": "operational",
+      "ticketId": 1456,
+      "createdAt": "2026-09-23T14:48:32.541Z",
+      "recoveredAt": "2026-09-23T14:48:53.822Z",
+      "recoveryNoteAdded": true,
+      "recoveryStatus": 11,
+      "recoveryCompletedAt": "2026-09-23T14:48:54.662Z"
+    },
+    "PTG:building-access-controls-fe4fbe1c": {
+      "active": false,
+      "status": "operational",
+      "recoveredAt": "2026-09-23T13:37:35.674Z"
+    },
+    "PTG:intune-dfed53e7": {
+      "active": false,
+      "status": "operational",
+      "recoveredAt": "2026-09-23T13:38:07.376Z"
+    },
+    "PTG:dc4-b746bfc5": {
+      "active": false,
+      "status": "operational",
+      "recoveredAt": "2026-09-23T13:38:07.389Z"
+    },
+    "PTG:dc3-f2b7218c": {
+      "active": false,
+      "status": "operational",
+      "recoveredAt": "2026-09-23T13:38:19.830Z"
+    },
+    "PTG:dc5-99cf78f7": {
+      "active": false,
+      "status": "operational",
+      "recoveredAt": "2026-09-23T13:38:19.845Z"
+    },
+    "PTG:dc6-18582eef": {
+      "active": false,
+      "status": "operational",
+      "ticketId": 1511,
+      "createdAt": "2026-09-24T04:04:34.564Z",
+      "recoveredAt": "2026-09-24T04:07:36.824Z",
+      "recoveryNoteAdded": true,
+      "recoveryStatus": 11,
+      "recoveryCompletedAt": "2026-09-24T04:07:37.522Z"
+    },
+    "PTG:atomic-supabase-50e6e994": {
+      "active": false,
+      "status": "operational",
+      "ticketId": 1509,
+      "createdAt": "2026-09-24T04:00:37.320Z",
+      "recoveredAt": "2026-09-24T04:01:38.537Z",
+      "recoveryNoteAdded": true,
+      "recoveryStatus": 11,
+      "recoveryCompletedAt": "2026-09-24T04:01:39.298Z"
+    },
+    "PTG:ps2-3cfb594a": {
+      "active": false,
+      "status": "operational",
+      "recoveredAt": "2026-09-23T13:39:10.826Z"
+    },
+    "PTG:supabase-atomic": {
+      "active": false,
+      "status": "operational",
+      "recoveredAt": "2026-09-23T13:39:10.835Z"
+    },
+    "PTG:supabase-hub": {
+      "active": false,
+      "status": "operational",
+      "recoveredAt": "2026-09-23T13:39:20.574Z"
+    },
+    "PTG:epicor-main-22f972a2": {
+      "active": false,
+      "status": "operational",
+      "ticketId": 1531,
+      "createdAt": "2026-09-24T05:04:36.948Z",
+      "recoveredAt": "2026-09-24T05:13:35.978Z",
+      "recoveryNoteAdded": true,
+      "recoveryStatus": 11,
+      "recoveryCompletedAt": "2026-09-24T05:13:37.032Z"
+    },
+    "PTG:epicor-app-0cd35039": {
+      "active": false,
+      "status": "operational",
+      "ticketId": 1536,
+      "createdAt": "2026-09-24T05:10:35.961Z",
+      "recoveredAt": "2026-09-24T05:15:35.714Z",
+      "recoveryNoteAdded": true,
+      "recoveryStatus": 11,
+      "recoveryCompletedAt": "2026-09-24T05:15:36.405Z"
+    },
+    "PTG:epicor-bartender-af823ec4": {
+      "active": false,
+      "status": "operational",
+      "ticketId": 1533,
+      "createdAt": "2026-09-24T05:04:38.151Z",
+      "recoveredAt": "2026-09-24T05:13:37.040Z",
+      "recoveryNoteAdded": true,
+      "recoveryStatus": 11,
+      "recoveryCompletedAt": "2026-09-24T05:13:37.776Z"
+    },
+    "PTG:epicor-reports-729bd7d6": {
+      "active": false,
+      "status": "operational",
+      "ticketId": 1578,
+      "createdAt": "2026-09-25T05:14:53.215Z",
+      "recoveredAt": "2026-09-25T05:15:54.170Z",
+      "recoveryNoteAdded": true,
+      "recoveryStatus": 11,
+      "recoveryCompletedAt": "2026-09-25T05:15:54.866Z"
+    },
+    "PTG:epicor-database-6966f287": {
+      "active": false,
+      "status": "operational",
+      "ticketId": 1535,
+      "createdAt": "2026-09-24T05:05:37.559Z",
+      "recoveredAt": "2026-09-24T05:22:35.490Z",
+      "recoveryNoteAdded": true,
+      "recoveryStatus": 11,
+      "recoveryCompletedAt": "2026-09-24T05:22:36.372Z"
+    },
+    "Microsoft:microsoft-365": {
+      "active": true,
+      "status": "degraded",
+      "ticketId": 1447,
+      "createdAt": "2026-09-23T13:40:19.805Z"
+    },
+    "Microsoft:exchange-online": {
+      "active": true,
+      "status": "degraded",
+      "ticketId": 1448,
+      "createdAt": "2026-09-23T13:40:20.294Z"
+    },
+    "Microsoft:microsoft-teams": {
+      "active": true,
+      "status": "degraded",
+      "ticketId": 1449,
+      "createdAt": "2026-09-23T13:40:20.625Z"
+    },
+    "Microsoft:identity": {
+      "active": true,
+      "status": "degraded",
+      "ticketId": 1450,
+      "createdAt": "2026-09-23T13:40:21.030Z"
+    },
+    "PTG:timesheet-data-45acf53f": {
+      "active": false,
+      "status": "operational",
+      "recoveredAt": "2026-09-24T10:25:19.010Z"
+    },
+    "PTG:timesheet-service-63404be8": {
+      "active": false,
+      "status": "operational",
+      "ticketId": 1588,
+      "createdAt": "2026-09-25T10:37:37.386Z",
+      "recoveredAt": "2026-09-25T10:54:18.575Z",
+      "recoveryNoteAdded": true,
+      "recoveryStatus": 11,
+      "recoveryCompletedAt": "2026-09-25T10:54:19.357Z"
+    },
+    "PTG:hypermill-1f759485": {
+      "active": true,
+      "status": "degraded",
+      "ticketId": 1561,
+      "createdAt": "2026-09-24T12:52:20.601Z"
+    },
+    "PTG:tncremo-e0427230": {
+      "active": false,
+      "status": "operational",
+      "recoveredAt": "2026-09-24T12:56:48.541Z"
+    },
+    "PTG:progress-dff4f071": {
+      "active": false,
+      "status": "operational",
+      "recoveredAt": "2026-09-24T12:58:17.972Z"
+    }
+  }
+}

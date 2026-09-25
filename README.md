@@ -19,6 +19,9 @@ Set variables on the host or in a local .env file (never commit it):
 - FRESHSERVICE_RECOVERY_STATUS: numeric Freshservice status used after a service recovers; defaults to 11 (`Awaiting Verification` in this account).
 - FRESHSERVICE_GROUP_ID, FRESHSERVICE_WORKSPACE_ID: optional numeric routing IDs.
 - FRESHSERVICE_STATE_FILE: optional persistent deduplication file path; defaults to `freshservice-state.json` beside the application. Keep it on durable storage and writable by the Node service account.
+- TEAMS_WEBHOOK_URL: optional Microsoft Teams Workflow webhook URL. Create the workflow in the target channel using the **Send webhook alerts to a channel** template; the URL determines which Teams channel receives alerts.
+- TEAMS_STATUS_PAGE_URL: optional HTTPS status-page link included on Teams alert cards.
+- TEAMS_STATE_FILE: optional persistent Teams deduplication file path; defaults to `teams-state.json` beside the application. Keep it on durable storage and writable by the Node service account.
 - STATUS_FILE: optional absolute path to a persistent status file; defaults to status.json.
 
 Generate a key: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
@@ -38,6 +41,8 @@ Notices do not automatically change availability or expire: update service avail
 Microsoft statuses remain automatic. Public pages refresh every 60 seconds and on window focus.
 
 When Freshservice is configured, the first observed actionable status creates an Open ticket through Freshservice API v2. Actionable statuses are advisory, degraded, outage and maintenance; `unknown` is ignored because it may only mean that a check is pending or unavailable. Further changes during the same outage do not create duplicates. Once the service returns to `operational`, the original ticket receives a private recovery note and moves to the configured recovery status (`Awaiting Verification`). A later actionable event can then create a new ticket. Recovery steps are persisted separately so a retry cannot duplicate the note. The server checks every 60 seconds, with the first scheduled check one minute after startup, independently of dashboard visitors. Public status requests can also supply a fresh observation. Failed requests are logged and retried on the next status refresh.
+
+When Teams is configured, the same actionable status transition posts an Adaptive Card to the channel associated with the Workflow webhook. One alert is posted per non-operational episode, further status changes are deduplicated, and a separate recovery card is posted when the service returns to `operational`. `unknown` is ignored. Teams and Freshservice can be enabled independently or together and keep separate durable state files.
 
 ## Hosting
 Host the Node application with a writable persistent volume for STATUS_FILE and TLS at the proxy.
