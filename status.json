@@ -1,0 +1,725 @@
+{
+  "publishedAt": "2026-09-22T15:32:52.932Z",
+  "services": [
+    {
+      "id": "company-portal",
+      "name": "Company Portal",
+      "description": "Device enrolment experience",
+      "group": "",
+      "order": 2,
+      "monitor": null,
+      "status": "operational",
+      "statusText": "Operational",
+      "source": "PTG"
+    },
+    {
+      "id": "vpn",
+      "name": "VPN Access",
+      "description": "Secure remote access to PTG resources",
+      "group": "",
+      "order": 100,
+      "monitor": null,
+      "status": "operational",
+      "statusText": "Operational",
+      "source": "PTG"
+    },
+    {
+      "id": "network",
+      "name": "Internet and Network",
+      "description": "Network connectivity",
+      "group": "",
+      "order": 100,
+      "monitor": null,
+      "status": "operational",
+      "statusText": "Operational",
+      "source": "PTG"
+    },
+    {
+      "id": "meeting-rooms",
+      "name": "Meeting Room Bookings",
+      "description": "Room calendars and meeting spaces",
+      "group": "",
+      "order": 100,
+      "monitor": null,
+      "status": "operational",
+      "statusText": "Operational",
+      "source": "PTG"
+    },
+    {
+      "id": "freshservice",
+      "name": "Freshservice",
+      "description": "PTG IT support portal",
+      "group": "",
+      "order": 100,
+      "monitor": null,
+      "status": "operational",
+      "statusText": "Operational",
+      "source": "PTG"
+    },
+    {
+      "id": "print-server-62c94c74",
+      "name": "Print Server",
+      "description": "Secure (follow me) Print Server",
+      "group": "",
+      "order": 100,
+      "monitor": null,
+      "status": "operational",
+      "statusText": "Operational",
+      "source": "PTG"
+    },
+    {
+      "id": "building-access-controls-fe4fbe1c",
+      "name": "Building Access Controls",
+      "description": "Net2/Paxton 10",
+      "group": "",
+      "order": 100,
+      "monitor": null,
+      "status": "operational",
+      "statusText": "Operational",
+      "source": "PTG"
+    },
+    {
+      "id": "intune-dfed53e7",
+      "name": "Intune",
+      "description": "Intune Computer Management",
+      "group": "",
+      "order": 1,
+      "monitor": null,
+      "status": "operational",
+      "statusText": "Operational",
+      "source": "PTG"
+    },
+    {
+      "id": "dc4-b746bfc5",
+      "name": "DC4",
+      "description": "Primary PTCNC",
+      "group": "Servers",
+      "order": 2,
+      "monitor": {
+        "type": "ping",
+        "target": "192.168.170.11",
+        "interval": 30,
+        "paused": false
+      },
+      "status": "operational",
+      "statusText": "Operational",
+      "source": "PTG"
+    },
+    {
+      "id": "dc3-f2b7218c",
+      "name": "DC3",
+      "description": "Primary ABEX",
+      "group": "Servers",
+      "order": 1,
+      "monitor": {
+        "type": "ping",
+        "target": "192.168.180.11",
+        "interval": 60,
+        "paused": false
+      },
+      "status": "operational",
+      "statusText": "Operational",
+      "source": "PTG"
+    },
+    {
+      "id": "dc5-99cf78f7",
+      "name": "DC5",
+      "description": "Secondary PTCNC",
+      "group": "Servers",
+      "order": 3,
+      "monitor": {
+        "type": "ping",
+        "target": "192.168.170.242",
+        "interval": 60,
+        "paused": false
+      },
+      "status": "operational",
+      "statusText": "Operational",
+      "source": "PTG"
+    },
+    {
+      "id": "dc6-18582eef",
+      "name": "DC6",
+      "description": "Primary GALLOWAY",
+      "group": "Servers",
+      "order": 4,
+      "monitor": {
+        "type": "ping",
+        "target": "192.168.190.11",
+        "interval": 60,
+        "paused": false
+      },
+      "status": "operational",
+      "statusText": "Operational",
+      "source": "PTG"
+    },
+    {
+      "id": "atomic-supabase-50e6e994",
+      "name": "PS1",
+      "description": "PS1",
+      "group": "Servers",
+      "order": 5,
+      "monitor": {
+        "type": "ping",
+        "target": "192.168.170.110",
+        "interval": 30,
+        "paused": false
+      },
+      "status": "operational",
+      "statusText": "Operational",
+      "source": "PTG"
+    },
+    {
+      "id": "ps2-3cfb594a",
+      "name": "PS2",
+      "description": "PS2",
+      "group": "Servers",
+      "order": 6,
+      "monitor": {
+        "type": "ping",
+        "target": "192.168.170.111",
+        "interval": 60,
+        "paused": false
+      },
+      "status": "operational",
+      "statusText": "Operational",
+      "source": "PTG"
+    },
+    {
+      "id": "supabase-atomic",
+      "name": "Supabase Atomic",
+      "description": "Atomic Supabase project health",
+      "group": "Supabase",
+      "order": 1,
+      "monitor": {
+        "type": "supabase",
+        "projectRef": "xlbmpqyjpsnfvbgxsvql",
+        "services": [
+          "auth",
+          "db",
+          "rest",
+          "realtime",
+          "storage"
+        ],
+        "interval": 30,
+        "paused": false
+      },
+      "status": "operational",
+      "statusText": "Operational",
+      "source": "PTG"
+    },
+    {
+      "id": "supabase-hub",
+      "name": "Supabase Hub",
+      "description": "Hub Supabase project health",
+      "group": "Supabase",
+      "order": 2,
+      "monitor": {
+        "type": "supabase",
+        "projectRef": "jgsvzjvfcvvluarborzn",
+        "services": [
+          "auth",
+          "db",
+          "rest",
+          "realtime",
+          "storage"
+        ],
+        "interval": 30,
+        "paused": false
+      },
+      "status": "operational",
+      "statusText": "Operational",
+      "source": "PTG"
+    },
+    {
+      "id": "epicor-main-22f972a2",
+      "name": "EPICOR MAIN",
+      "description": "",
+      "group": "Epicor",
+      "order": 100,
+      "monitor": {
+        "type": "http",
+        "target": "https://kineticapp1.progressive.local/kinetic/api/v2/odata/pt_live/Ice.BO.HealthCheckSvc/ErpAlive",
+        "interval": 30,
+        "paused": false,
+        "expectedText": "",
+        "method": "POST",
+        "secret": "AQAAANCMnd8BFdERjHoAwE/Cl+sBAAAA/ipRENQJpkysuxSdf6v8MAAAAAACAAAAAAAQZgAAAAEAACAAAAD51C9RVJf4wnuwmL6t1r8JOAANWCtcsLDqX4ufWCiZ0AAAAAAOgAAAAAIAACAAAABJ1xeOOdlENWADlNKvIoCCG2wqNB3oP5nrlk4E6QdHjoAAAACvND+mv5Lygl/6WXxY6J2dDaIkun0hgWeAXsM/cDvUtG6B1ngE7UUcctirPKt88rj0/3s7ohNolgUJ1rHPEJPo0YcCtNVBROOIaLJ/cm1NLsEu7Vbpd+KETtiJuAqMR2GdF7y9C+w7jcH3VMvovddsFEtkHDpya+ZHNrQks5YXkUAAAAD+LXsNL6AyDFKSvK4elLEIFMP1abIALLQczUu5cB74suDQcHVvHq+ulLlm7R26FgzcD5+2uHd7/+G1OOTyYWCg",
+        "hasApiKey": true,
+        "hasAuthorization": true
+      },
+      "status": "operational",
+      "statusText": "Operational",
+      "source": "PTG"
+    },
+    {
+      "id": "epicor-app-0cd35039",
+      "name": "EPICOR APP",
+      "description": "",
+      "group": "Epicor",
+      "order": 100,
+      "monitor": {
+        "type": "http",
+        "target": "https://kineticapp1.progressive.local/kinetic/api/v2/efx/PT_Live/HealthChecks/AppServerAlive",
+        "interval": 30,
+        "paused": false,
+        "expectedText": "",
+        "method": "POST",
+        "secret": "AQAAANCMnd8BFdERjHoAwE/Cl+sBAAAA/ipRENQJpkysuxSdf6v8MAAAAAACAAAAAAAQZgAAAAEAACAAAABST+OWEpHS8DHTEFihJhuErlqDGq0Lf8lsLvJYE64QogAAAAAOgAAAAAIAACAAAAAp6Mu6q+LfQm9jaEPDM3uGehJGZ9k+dU7PflWBFhmWHoAAAAChE6wmJVWf7h5wA1+8uVTcCtlN2VZrfanrPse/6WAbaINh6bf5PmRCKGiCxCXsZtGXDUi3VXgSUvobPLBOtnIF1Y9+i8uKIjXolw/8mfYNUIaCN0DxjpCj1iFeMfxyh1/2uat90jwceTo+OKYN9HGIixfgOFXLDX6J9E7LiQ/4jkAAAACjBCBcPx6s55XKxqQ5F0Yv4NnZW5vyOtWsOKJwnTMro79r+spSCKypItsZ0f+hwGPRxb2Q8N9LEYWEktewN102",
+        "hasApiKey": true,
+        "hasAuthorization": true
+      },
+      "status": "operational",
+      "statusText": "Operational",
+      "source": "PTG"
+    },
+    {
+      "id": "epicor-bartender-af823ec4",
+      "name": "EPICOR BARTENDER",
+      "description": "",
+      "group": "Epicor",
+      "order": 100,
+      "monitor": {
+        "type": "http",
+        "target": "https://kineticapp1.progressive.local/kinetic/api/v2/efx/PT_Live/HealthChecks/BartenderSevice",
+        "interval": 30,
+        "paused": false,
+        "expectedText": "",
+        "method": "POST",
+        "secret": "AQAAANCMnd8BFdERjHoAwE/Cl+sBAAAA/ipRENQJpkysuxSdf6v8MAAAAAACAAAAAAAQZgAAAAEAACAAAADCPllKPMQo5/GPieYV8NBZvVL3ZTOran8iLm3ZIi2OzAAAAAAOgAAAAAIAACAAAADlu4XSHlsIxbwRuRBEIQakQc/vK1gnz8VscI22WfIoBIAAAAAVo/ffisyXNqgcnySh7mQnPS1BPT1zQYScSupUSd1WeVrMH7S+rLdfy9qH8zV5In+UKgMq0I04xC3EZkWDepNnToiAgQJsmUdW/ePeUN8SZpLeBCMcE/Zb4VEKmHsCwNGzmtY8sUJeAkg0FvEP+AFs8o7OdL+3igVhh1Q3SJRhFkAAAABZVzmDyzEyu6h01jKB1ZaWBXCr8pIZM/ak5zroXlF47XHm7EwTbe1fNIa/xqwhjCNtMb+L1BGgTndKvCMHHp+g",
+        "hasApiKey": true,
+        "hasAuthorization": true
+      },
+      "status": "operational",
+      "statusText": "Operational",
+      "source": "PTG"
+    },
+    {
+      "id": "epicor-reports-729bd7d6",
+      "name": "EPICOR REPORTS",
+      "description": "",
+      "group": "Epicor",
+      "order": 100,
+      "monitor": {
+        "type": "http",
+        "target": "https://kineticapp1.progressive.local/kinetic/api/v2/efx/PT_Live/HealthChecks/ReportServerAlive",
+        "interval": 30,
+        "paused": false,
+        "expectedText": "",
+        "method": "POST",
+        "secret": "AQAAANCMnd8BFdERjHoAwE/Cl+sBAAAA/ipRENQJpkysuxSdf6v8MAAAAAACAAAAAAAQZgAAAAEAACAAAABD87gMeyU5XSbSMgzsRoHt95vbxaucTsChrUUYHg0LYAAAAAAOgAAAAAIAACAAAADBbLsguAUC/Gon4nfo+0ksGuJQsPFq2V5abg1SYazs9oAAAABXuZV7xj/ydgr7ew4FI7fdZpNIxV2SO4YWBpRfqABWE/2tHKABDgyCzLae3qYAf+47omgUypcHeq/BJfyZtejag0O814WX2oIMeYwGDjGVzUwN/EllEHi9uHYKjyzwIFb8QNUtrRBEj4HYmfsrydCv06R7FViQCAenHn6PLMQKX0AAAABCckEdPR4w75AJZoJ0eWLfu80uBEBhXjB3AyxKRnp24W73lg2z90FvJuo2ZyKW93dzu89BzW3T7e8F7e3ZjJPV",
+        "hasApiKey": true,
+        "hasAuthorization": true
+      },
+      "status": "operational",
+      "statusText": "Operational",
+      "source": "PTG"
+    },
+    {
+      "id": "epicor-database-6966f287",
+      "name": "EPICOR DATABASE",
+      "description": "",
+      "group": "Epicor",
+      "order": 100,
+      "monitor": {
+        "type": "http",
+        "target": "https://kineticapp1.progressive.local/kinetic/api/v2/efx/PT_Live/HealthChecks/DatabaseAlive",
+        "interval": 30,
+        "paused": false,
+        "expectedText": "",
+        "method": "POST",
+        "secret": "AQAAANCMnd8BFdERjHoAwE/Cl+sBAAAA/ipRENQJpkysuxSdf6v8MAAAAAACAAAAAAAQZgAAAAEAACAAAAAekN5kdYg69Dl1dp3sxOAE8cTbewDWVFBiF/GiHSLe0QAAAAAOgAAAAAIAACAAAABXt9UOx8QBe3/Aih34/sa0KvSTMsm0/yXVWQgJ0WCjHIAAAAAdQ0ho6R2jygdYn55ardDjH4Fa1g2uwSFikz9a6/Vp2v4MLFjDF7+ImGkeR35EMuD6Q7mo2OVLjQLVihLv/3vP8TBVrq7tl6rqdJdcyaK9T3zuA7UoPObp3ePvUtOB+EBL8qpPQHqtETmGZInd2TWZceY3ZG9s7dzQxa4XwJ1GjUAAAADkL0KVm+LMWyY6twQMLK+rOU61MNxu99LPlBvWMigvsPwAiLsSQ6lNtE1EQiEvfyBJI3wE9nCayaA+ZXn4ArZf",
+        "hasApiKey": true,
+        "hasAuthorization": true
+      },
+      "status": "operational",
+      "statusText": "Operational",
+      "source": "PTG"
+    }
+  ],
+  "incidents": [],
+  "maintenance": [],
+  "supportUrls": {
+    "microsoft-365": "https://progressive-technology.freshservice.com/support/tickets/new",
+    "vpn": "https://progressive-technology.freshservice.com/support/tickets/new",
+    "company-portal": "https://progressive-technology.freshservice.com/support/tickets/new",
+    "network": "https://progressive-technology.freshservice.com/support/tickets/new"
+  },
+  "microsoftAssessments": [
+    {
+      "id": "OP1470668",
+      "impact": "not-affected",
+      "note": "",
+      "workaround": "",
+      "nextUpdateAt": "",
+      "updatedAt": "2026-09-22T13:39:42.812Z",
+      "updates": [
+        {
+          "id": "7a0bdcc5-2654-4963-be03-0ade7cd57639",
+          "at": "2026-09-17T07:26:37.813Z",
+          "impact": "not-affected",
+          "message": "PTG impact assessment updated.",
+          "workaround": "",
+          "nextUpdateAt": ""
+        },
+        {
+          "id": "2e727f2f-16f8-4ee7-abdb-eee33d6afbb0",
+          "at": "2026-09-17T07:27:25.076Z",
+          "impact": "confirmed",
+          "message": "PTG impact assessment updated.",
+          "workaround": "",
+          "nextUpdateAt": ""
+        },
+        {
+          "id": "56b3ac00-9791-46b0-881e-18670e9f19f5",
+          "at": "2026-09-17T09:15:19.457Z",
+          "impact": "not-affected",
+          "message": "PTG impact assessment updated.",
+          "workaround": "",
+          "nextUpdateAt": ""
+        },
+        {
+          "id": "18510c35-2e73-4a3c-9d98-4dc2e3d7e3a8",
+          "at": "2026-09-17T15:31:14.167Z",
+          "impact": "confirmed",
+          "message": "PTG impact assessment updated.",
+          "workaround": "",
+          "nextUpdateAt": ""
+        },
+        {
+          "id": "489795cd-6d41-4e1d-a7ff-e15312560c55",
+          "at": "2026-09-18T06:55:22.747Z",
+          "impact": "unknown",
+          "message": "PTG impact assessment updated.",
+          "workaround": "",
+          "nextUpdateAt": ""
+        },
+        {
+          "id": "bbe8bde9-87fe-46ef-bf9f-b6d16bfc06f8",
+          "at": "2026-09-18T09:23:18.438Z",
+          "impact": "confirmed",
+          "message": "PTG impact assessment updated.",
+          "workaround": "",
+          "nextUpdateAt": ""
+        },
+        {
+          "id": "595560fc-50cf-4d04-86df-408a84c27d55",
+          "at": "2026-09-18T09:40:37.076Z",
+          "impact": "unknown",
+          "message": "PTG impact assessment updated.",
+          "workaround": "",
+          "nextUpdateAt": ""
+        },
+        {
+          "id": "1ea7172e-95b6-4ce1-a84b-6673a3443be1",
+          "at": "2026-09-22T13:39:42.812Z",
+          "impact": "not-affected",
+          "message": "PTG impact assessment updated.",
+          "workaround": "",
+          "nextUpdateAt": ""
+        }
+      ]
+    },
+    {
+      "id": "CP1447275",
+      "impact": "not-affected",
+      "note": "",
+      "workaround": "",
+      "nextUpdateAt": "2026-10-09T15:30:00.000Z",
+      "updatedAt": "2026-09-22T13:38:50.939Z",
+      "updates": [
+        {
+          "id": "c8658c18-8732-4aba-9ea9-19c5959694cc",
+          "at": "2026-09-17T10:39:27.820Z",
+          "impact": "unknown",
+          "message": "PTG impact assessment updated.",
+          "workaround": "",
+          "nextUpdateAt": ""
+        },
+        {
+          "id": "e8f78471-630e-4060-a692-4353580bdad4",
+          "at": "2026-09-17T10:39:52.881Z",
+          "impact": "not-affected",
+          "message": "PTG impact assessment updated.",
+          "workaround": "",
+          "nextUpdateAt": ""
+        },
+        {
+          "id": "81302d48-f3b5-47ae-ac6f-002b9c681496",
+          "at": "2026-09-17T10:40:19.590Z",
+          "impact": "unknown",
+          "message": "PTG impact assessment updated.",
+          "workaround": "",
+          "nextUpdateAt": ""
+        },
+        {
+          "id": "e062df68-bbcf-4d98-b72b-818c28db6078",
+          "at": "2026-09-17T15:29:28.640Z",
+          "impact": "confirmed",
+          "message": "N/A",
+          "workaround": "N/A",
+          "nextUpdateAt": "2026-09-17T15:30:00.000Z"
+        },
+        {
+          "id": "b69b7d9a-fccb-431f-8947-183e224ba687",
+          "at": "2026-09-17T15:29:45.603Z",
+          "impact": "confirmed",
+          "message": "PTG impact assessment updated.",
+          "workaround": "",
+          "nextUpdateAt": "2026-09-17T15:30:00.000Z"
+        },
+        {
+          "id": "a8b66470-16e8-4e2c-9ed0-9fe0d897b3e0",
+          "at": "2026-09-17T15:30:07.563Z",
+          "impact": "unknown",
+          "message": "PTG impact assessment updated.",
+          "workaround": "",
+          "nextUpdateAt": "2026-09-17T15:30:00.000Z"
+        },
+        {
+          "id": "1abf1afa-6126-4688-bbd5-e6d5b1e4a8df",
+          "at": "2026-09-17T15:30:14.752Z",
+          "impact": "not-affected",
+          "message": "PTG impact assessment updated.",
+          "workaround": "",
+          "nextUpdateAt": "2026-09-17T15:30:00.000Z"
+        },
+        {
+          "id": "cda4bc3e-33c9-4bba-b950-313790f35e99",
+          "at": "2026-09-17T15:30:20.780Z",
+          "impact": "unknown",
+          "message": "PTG impact assessment updated.",
+          "workaround": "",
+          "nextUpdateAt": "2026-09-17T15:30:00.000Z"
+        },
+        {
+          "id": "29bed208-393e-471d-ad12-96a95f80603c",
+          "at": "2026-09-18T15:58:35.301Z",
+          "impact": "unknown",
+          "message": "PTG impact assessment updated.",
+          "workaround": "",
+          "nextUpdateAt": "2026-10-09T15:30:00.000Z"
+        },
+        {
+          "id": "5b56948e-e010-4eac-9501-6a6aed5bb90b",
+          "at": "2026-09-21T14:38:46.227Z",
+          "impact": "confirmed",
+          "message": "test",
+          "workaround": "test",
+          "nextUpdateAt": "2026-10-09T15:30:00.000Z"
+        },
+        {
+          "id": "6310d4b2-70c7-49ac-a09a-c10d2c11d854",
+          "at": "2026-09-21T14:39:01.993Z",
+          "impact": "unknown",
+          "message": "PTG impact assessment updated.",
+          "workaround": "",
+          "nextUpdateAt": "2026-10-09T15:30:00.000Z"
+        },
+        {
+          "id": "3c0f88f3-e302-4c9a-9ef2-9d81825cfb8b",
+          "at": "2026-09-22T13:38:50.939Z",
+          "impact": "not-affected",
+          "message": "PTG impact assessment updated.",
+          "workaround": "",
+          "nextUpdateAt": "2026-10-09T15:30:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "CP1474143",
+      "impact": "not-affected",
+      "note": "",
+      "workaround": "",
+      "nextUpdateAt": "",
+      "updatedAt": "2026-09-22T13:39:42.812Z",
+      "updates": [
+        {
+          "id": "13f4280a-46df-436e-995a-349a20d7f93a",
+          "at": "2026-09-22T13:39:42.812Z",
+          "impact": "not-affected",
+          "message": "PTG impact assessment updated.",
+          "workaround": "",
+          "nextUpdateAt": ""
+        }
+      ]
+    },
+    {
+      "id": "CW1470765",
+      "impact": "not-affected",
+      "note": "",
+      "workaround": "",
+      "nextUpdateAt": "",
+      "updatedAt": "2026-09-22T13:39:42.812Z",
+      "updates": [
+        {
+          "id": "eab4d0e0-daac-43ab-b20f-d8db2906b46f",
+          "at": "2026-09-22T13:39:42.812Z",
+          "impact": "not-affected",
+          "message": "PTG impact assessment updated.",
+          "workaround": "",
+          "nextUpdateAt": ""
+        }
+      ]
+    },
+    {
+      "id": "EX1441488",
+      "impact": "not-affected",
+      "note": "",
+      "workaround": "",
+      "nextUpdateAt": "",
+      "updatedAt": "2026-09-22T13:39:42.812Z",
+      "updates": [
+        {
+          "id": "74328a3a-c76b-4b5d-b30f-694f5d4806d7",
+          "at": "2026-09-22T13:39:42.812Z",
+          "impact": "not-affected",
+          "message": "PTG impact assessment updated.",
+          "workaround": "",
+          "nextUpdateAt": ""
+        }
+      ]
+    },
+    {
+      "id": "MO1447619",
+      "impact": "not-affected",
+      "note": "",
+      "workaround": "",
+      "nextUpdateAt": "",
+      "updatedAt": "2026-09-22T13:39:42.812Z",
+      "updates": [
+        {
+          "id": "830202ad-8b06-4d21-946c-348558e797c0",
+          "at": "2026-09-22T13:39:42.812Z",
+          "impact": "not-affected",
+          "message": "PTG impact assessment updated.",
+          "workaround": "",
+          "nextUpdateAt": ""
+        }
+      ]
+    },
+    {
+      "id": "MO1457843",
+      "impact": "not-affected",
+      "note": "",
+      "workaround": "",
+      "nextUpdateAt": "",
+      "updatedAt": "2026-09-22T13:39:42.812Z",
+      "updates": [
+        {
+          "id": "e2f4ea6d-1759-4fa9-b97b-ebe33dbca23c",
+          "at": "2026-09-22T13:39:42.812Z",
+          "impact": "not-affected",
+          "message": "PTG impact assessment updated.",
+          "workaround": "",
+          "nextUpdateAt": ""
+        }
+      ]
+    },
+    {
+      "id": "MO1458983",
+      "impact": "not-affected",
+      "note": "",
+      "workaround": "",
+      "nextUpdateAt": "",
+      "updatedAt": "2026-09-22T13:39:42.812Z",
+      "updates": [
+        {
+          "id": "0499b6c4-da1f-4a07-9acb-03ea96dc54b3",
+          "at": "2026-09-22T13:39:42.812Z",
+          "impact": "not-affected",
+          "message": "PTG impact assessment updated.",
+          "workaround": "",
+          "nextUpdateAt": ""
+        }
+      ]
+    },
+    {
+      "id": "MP1471821",
+      "impact": "not-affected",
+      "note": "",
+      "workaround": "",
+      "nextUpdateAt": "",
+      "updatedAt": "2026-09-22T13:39:42.812Z",
+      "updates": [
+        {
+          "id": "8d4b5faa-9460-4a96-a9d3-9b4139cc0d3d",
+          "at": "2026-09-22T13:39:42.812Z",
+          "impact": "not-affected",
+          "message": "PTG impact assessment updated.",
+          "workaround": "",
+          "nextUpdateAt": ""
+        }
+      ]
+    },
+    {
+      "id": "TM1440450",
+      "impact": "not-affected",
+      "note": "",
+      "workaround": "",
+      "nextUpdateAt": "",
+      "updatedAt": "2026-09-22T13:39:42.812Z",
+      "updates": [
+        {
+          "id": "27c3643d-6c79-404e-9d15-a5c2e1663972",
+          "at": "2026-09-22T13:39:42.812Z",
+          "impact": "not-affected",
+          "message": "PTG impact assessment updated.",
+          "workaround": "",
+          "nextUpdateAt": ""
+        }
+      ]
+    },
+    {
+      "id": "TM1473611",
+      "impact": "not-affected",
+      "note": "",
+      "workaround": "",
+      "nextUpdateAt": "",
+      "updatedAt": "2026-09-22T13:39:42.812Z",
+      "updates": [
+        {
+          "id": "fca4a2af-4589-4eb9-ada7-404f02961328",
+          "at": "2026-09-22T13:39:42.812Z",
+          "impact": "not-affected",
+          "message": "PTG impact assessment updated.",
+          "workaround": "",
+          "nextUpdateAt": ""
+        }
+      ]
+    }
+  ],
+  "retiredServices": [
+    {
+      "id": "epicor-d0206022",
+      "name": "EPICOR MAIN",
+      "removedAt": "2026-09-22T09:50:46.773Z"
+    },
+    {
+      "id": "epicor-database-b84aa300",
+      "name": "EPICOR DATABASE",
+      "removedAt": "2026-09-22T09:50:46.773Z"
+    },
+    {
+      "id": "epicor-app-09e2ab6d",
+      "name": "EPICOR APP",
+      "removedAt": "2026-09-22T09:50:46.773Z"
+    },
+    {
+      "id": "epicor-bartender-4b03fe8d",
+      "name": "EPICOR BARTENDER",
+      "removedAt": "2026-09-22T09:50:46.773Z"
+    },
+    {
+      "id": "epicor-reports-cc29c0cc",
+      "name": "EPICOR REPORTS",
+      "removedAt": "2026-09-22T09:50:46.773Z"
+    },
+    {
+      "id": "tese-81474ac8",
+      "name": "TESE",
+      "removedAt": "2026-09-22T10:15:53.282Z"
+    }
+  ],
+  "announcement": null
+}
