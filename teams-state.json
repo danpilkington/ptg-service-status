@@ -91,7 +91,9 @@
     },
     "PTG:epicor-reports-729bd7d6": {
       "active": false,
-      "status": "operational"
+      "status": "operational",
+      "notifiedAt": "2026-09-28T05:14:52.767Z",
+      "recoveredAt": "2026-09-28T05:15:52.849Z"
     },
     "PTG:epicor-database-6966f287": {
       "active": false,
