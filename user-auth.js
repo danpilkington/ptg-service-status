@@ -1,14 +1,15 @@
 "use strict";
 const { createFileStorage, revision } = require("./storage");
 const path = require("node:path");
+const { createWelcomeMailer, validEmail } = require("./welcome-email");
 const { randomBytes, randomUUID, scrypt, timingSafeEqual } = require("node:crypto");
 const derive = require("node:util").promisify(scrypt);
-const publicUser = ({ id, username, firstName, lastName, jobTitle, role, active }) => ({ id, username, firstName, lastName, jobTitle, role, active });
+const publicUser = ({ id, username, firstName, lastName, jobTitle, role, active, email = "" }) => ({ id, username, firstName, lastName, jobTitle, role, active, email });
 const equal = (a, b) => { const x = Buffer.from(a), y = Buffer.from(b); return x.length === y.length && timingSafeEqual(x, y); };
 async function hashPassword(password, salt = randomBytes(16).toString("hex")) {
     return salt + ":" + (await derive(password, salt, 64)).toString("hex");
 }
-module.exports = function attachUsers(app, { statusFile, key, usersFile = process.env.USERS_FILE || path.join(path.dirname(statusFile), "users.json"), storage = createFileStorage(statusFile, usersFile) }) {
+module.exports = function attachUsers(app, { statusFile, key, usersFile = process.env.USERS_FILE || path.join(path.dirname(statusFile), "users.json"), storage = createFileStorage(statusFile, usersFile), welcomeMailer = createWelcomeMailer() }) {
     const sessions = new Map(), attempts = new Map();
     let writing = false;
     async function read() { return JSON.parse(await storage.read("users") || "[]"); }
@@ -62,7 +63,7 @@ module.exports = function attachUsers(app, { statusFile, key, usersFile = proces
         if (req.adminUser.role !== "admin") return res.status(403).json({ error: "Only administrators can manage users." });
         next();
     });
-    app.get("/api/admin/users", wrap(async (req, res) => res.json({ users: (await read()).map(publicUser) })));
+    app.get("/api/admin/users", wrap(async (req, res) => res.json({ users: (await read()).map(publicUser), welcomeEmail: welcomeMailer.configuration() })));
     async function save(req, res) {
         if (writing) return res.status(409).json({ error: "Another account is being saved. Please retry." });
         writing = true;
@@ -75,6 +76,9 @@ module.exports = function attachUsers(app, { statusFile, key, usersFile = proces
             if (Object.entries(limits).some(([field, max]) => typeof input[field] !== "string" || !input[field].trim() || input[field].length > max) ||
                 !/^[a-zA-Z0-9@._-]+$/.test(input.username.trim()) || !["admin", "editor"].includes(input.role) || typeof input.active !== "boolean")
                 return res.status(400).json({ error: "Enter a username, first name, last name, job title, and valid role. Usernames may contain letters, numbers, @, dots, underscores and hyphens." });
+            const email = input.email === undefined ? current?.email || "" : typeof input.email === "string" ? input.email.trim() : null;
+            if ((!current && !validEmail(email)) || (email !== "" && !validEmail(email)))
+                return res.status(400).json({ error: "Enter a valid email address for the user." });
             const username = input.username.trim().toLowerCase();
             if (users.some(u => u.username === username && u.id !== current?.id)) return res.status(409).json({ error: "That username already exists." });
             const password = input.password;
@@ -83,16 +87,40 @@ module.exports = function attachUsers(app, { statusFile, key, usersFile = proces
             if (current?.id === req.adminUser.id && (!input.active || input.role !== "admin")) return res.status(400).json({ error: "You cannot disable your own account or remove your administrator role." });
             if (current?.role === "admin" && current.active && (!input.active || input.role !== "admin") && !users.some(u => u.id !== current.id && u.role === "admin" && u.active))
                 return res.status(400).json({ error: "Keep at least one active administrator." });
-            const user = { id: current?.id || randomUUID(), username, firstName: input.firstName.trim(), lastName: input.lastName.trim(), jobTitle: input.jobTitle.trim(), role: input.role, active: input.active,
+            const user = { id: current?.id || randomUUID(), username, email, firstName: input.firstName.trim(), lastName: input.lastName.trim(), jobTitle: input.jobTitle.trim(), role: input.role, active: input.active,
                 passwordHash: password ? await hashPassword(password) : current.passwordHash };
             const output = current ? users.map(u => u.id === current.id ? user : u) : [...users, user];
             await storage.write("users", JSON.stringify(output, null, 2) + "\n", revision(rawUsers));
             if (current && (password || !user.active || user.role !== current.role)) {
                 for (const [token, session] of sessions) if (session.userId === current.id) sessions.delete(token);
             }
-            res.status(current ? 200 : 201).json({ user: publicUser(user) });
+            // Persist first: no email is sent for validation, conflict or storage failures.
+            let welcomeEmail;
+            if (!current) {
+                welcomeEmail = user.active ? await welcomeMailer.send(user, password)
+                    : { status: "skipped", message: "No welcome email was sent because this account is disabled." };
+            }
+            const accountEmail = current?.active && !user.active
+                ? await welcomeMailer.send(user, undefined, "deactivated") : undefined;
+            res.status(current ? 200 : 201).json({ user: publicUser(user), ...(welcomeEmail ? { welcomeEmail } : {}), ...(accountEmail ? { accountEmail } : {}) });
         } finally { writing = false; }
     }
+    app.delete("/api/admin/users/:id", wrap(async (req, res) => {
+        if (writing) return res.status(409).json({ error: "Another account is being saved. Please retry." });
+        writing = true;
+        try {
+            const raw = await storage.read("users"), users = JSON.parse(raw || "[]");
+            const user = users.find(item => item.id === req.params.id);
+            if (!user) return res.status(404).json({ error: "User not found." });
+            if (user.id === req.adminUser.id) return res.status(400).json({ error: "You cannot delete your own account." });
+            if (user.active && user.role === "admin" && !users.some(item => item.id !== user.id && item.active && item.role === "admin"))
+                return res.status(400).json({ error: "Keep at least one active administrator." });
+            await storage.write("users", JSON.stringify(users.filter(item => item.id !== user.id), null, 2) + "\n", revision(raw));
+            for (const [token, session] of sessions) if (session.userId === user.id) sessions.delete(token);
+            const accountEmail = await welcomeMailer.send(user, undefined, "deleted");
+            res.json({ deleted: true, accountEmail });
+        } finally { writing = false; }
+    }));
     app.post("/api/admin/users", wrap(save));
     app.put("/api/admin/users/:id", wrap(save));
 };

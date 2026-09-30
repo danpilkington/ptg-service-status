@@ -379,3 +379,5 @@ form>button{margin-top:16px}
 #users-feedback{color:var(--blue)}
 .admin-page [hidden]{display:none!important}
 
+.modern-admin .user-field-email{grid-column:1 / -1}
+.user-account .delete-user{color:#a52520;border-color:#e7b5b2;margin-left:8px}

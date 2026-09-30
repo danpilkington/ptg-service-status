@@ -577,23 +577,38 @@
         return result;
     }
     function clearUserForm() {
-        editingUser = null; $("user-form").reset(); $("user-password").required = true;
+        editingUser = null; $("user-form").reset(); $("user-email").required = true; $("user-password").required = true;
         $("user-editor-title").textContent = "Create user";
     }
     async function loadUsers() {
-        const { users } = await accountRequest("users");
+        const { users, welcomeEmail } = await accountRequest("users");
+        $("welcome-email-help").textContent = welcomeEmail?.message || "Welcome email settings are unavailable. Restart the website server.";
         $("users-list").replaceChildren();
         for (const user of users) {
             const row = text("article", "", "user-account");
             row.append(text("strong", user.firstName + " " + user.lastName),
-                text("p", user.jobTitle),
+                text("p", user.jobTitle), text("p", user.email || "No email address"),
                 text("p", user.username + " · " + (user.role === "admin" ? "Administrator" : "Editor") + " · " + (user.active ? "Enabled" : "Disabled")),
                 button("Edit account", () => {
                     editingUser = user.id;
+                    $("user-email").value = user.email || ""; $("user-email").required = false;
                     for (const field of ["username", "firstName", "lastName", "jobTitle", "role"]) $("user-" + field).value = user[field];
                     $("user-active").checked = user.active; $("user-password").value = ""; $("user-password").required = false;
                     $("user-editor-title").textContent = "Edit " + user.username; $("user-username").focus();
                 }));
+            if (user.id !== signedInUserId && !(user.active && user.role === "admin" && users.filter(item => item.active && item.role === "admin").length === 1)) {
+                const remove = button("Delete user", () => {
+                    if (!confirm("Permanently delete " + user.username + "? They will lose access immediately and receive an email notification if an email address is saved.")) return;
+                    run(async () => {
+                        const result = await accountRequest("users/" + encodeURIComponent(user.id), "DELETE");
+                        if (editingUser === user.id) clearUserForm();
+                        $("users-feedback").textContent = "Account deleted. " + result.accountEmail.message;
+                        $("users-feedback").classList.toggle("error", result.accountEmail.status !== "accepted");
+                        await loadUsers();
+                    });
+                });
+                remove.classList.add("delete-user"); row.append(remove);
+            }
             $("users-list").append(row);
         }
         if (!users.length) $("users-list").append(text("p", "No individual accounts yet. Create an administrator to get started."));
@@ -617,15 +632,18 @@
         event.preventDefault();
         run(async () => {
             const body = {};
-            for (const field of ["username", "firstName", "lastName", "jobTitle", "role", "password"]) body[field] = $("user-" + field).value;
+            for (const field of ["username", "email", "firstName", "lastName", "jobTitle", "role", "password"]) body[field] = $("user-" + field).value;
             body.active = $("user-active").checked;
             try {
-                await accountRequest("users" + (editingUser ? "/" + encodeURIComponent(editingUser) : ""), editingUser ? "PUT" : "POST", body);
+                const saved = await accountRequest("users" + (editingUser ? "/" + encodeURIComponent(editingUser) : ""), editingUser ? "PUT" : "POST", body);
                 if (editingUser === signedInUserId && body.password) {
                     const login = await accountRequest("login", "POST", { username: body.username, password: body.password });
                     key = login.token;
                 }
-                clearUserForm(); $("users-feedback").textContent = "Account saved.";
+                clearUserForm();
+                const mail = saved.accountEmail || saved.welcomeEmail;
+                $("users-feedback").textContent = "Account saved." + (mail ? " " + mail.message : "");
+                $("users-feedback").classList.toggle("error", !!mail && ["failed", "unknown", "not_configured"].includes(mail.status));
                 await loadUsers();
             } catch (error) { $("users-feedback").textContent = error.message; throw error; }
         });

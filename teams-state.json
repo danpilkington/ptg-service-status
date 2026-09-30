@@ -2,16 +2,18 @@
   "version": 1,
   "services": {
     "Microsoft:sharepoint-online": {
-      "active": false,
-      "status": "operational"
+      "active": true,
+      "status": "degraded",
+      "notifiedAt": "2026-09-30T13:33:32.121Z"
     },
     "Microsoft:onedrive": {
       "active": false,
       "status": "operational"
     },
     "Microsoft:intune": {
-      "active": false,
-      "status": "operational"
+      "active": true,
+      "status": "degraded",
+      "notifiedAt": "2026-09-30T13:25:15.184Z"
     },
     "PTG:company-portal": {
       "active": false,
@@ -35,7 +37,9 @@
     },
     "PTG:print-server-62c94c74": {
       "active": false,
-      "status": "operational"
+      "status": "operational",
+      "notifiedAt": "2026-09-30T08:37:54.908Z",
+      "recoveredAt": "2026-09-30T08:43:56.843Z"
     },
     "PTG:building-access-controls-fe4fbe1c": {
       "active": false,
@@ -71,11 +75,15 @@
     },
     "PTG:supabase-atomic": {
       "active": false,
-      "status": "operational"
+      "status": "operational",
+      "notifiedAt": "2026-09-30T01:05:12.349Z",
+      "recoveredAt": "2026-09-30T01:09:12.346Z"
     },
     "PTG:supabase-hub": {
       "active": false,
-      "status": "operational"
+      "status": "operational",
+      "notifiedAt": "2026-09-30T01:06:12.497Z",
+      "recoveredAt": "2026-09-30T01:09:12.625Z"
     },
     "PTG:epicor-main-22f972a2": {
       "active": false,
@@ -92,8 +100,8 @@
     "PTG:epicor-reports-729bd7d6": {
       "active": false,
       "status": "operational",
-      "notifiedAt": "2026-09-28T05:14:52.767Z",
-      "recoveredAt": "2026-09-28T05:15:52.849Z"
+      "notifiedAt": "2026-09-30T05:15:13.756Z",
+      "recoveredAt": "2026-09-30T05:16:13.593Z"
     },
     "PTG:epicor-database-6966f287": {
       "active": false,
@@ -138,9 +146,20 @@
       "recoveredAt": "2026-09-25T10:54:18.577Z"
     },
     "PTG:hypermill-1f759485": {
-      "active": true,
-      "status": "degraded",
-      "notifiedAt": "2026-09-25T10:52:20.253Z"
+      "active": false,
+      "status": "operational",
+      "notifiedAt": "2026-09-25T10:52:20.253Z",
+      "recoveredAt": "2026-09-30T08:08:50.482Z"
+    },
+    "PTG:entra-connect-sync-73ec9be4": {
+      "active": false,
+      "status": "operational",
+      "notifiedAt": "2026-09-28T15:18:37.106Z",
+      "recoveredAt": "2026-09-28T15:25:50.768Z"
+    },
+    "PTG:teamviewer-453dccce": {
+      "active": false,
+      "status": "operational"
     }
   }
 }

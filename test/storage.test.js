@@ -1,4 +1,5 @@
 "use strict";
+process.env.WELCOME_EMAIL_ENABLED = "false";
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs/promises");
@@ -55,7 +56,7 @@ test("publishing, accounts and health monitoring use injected storage without lo
     assert.equal((await send("status","PUT",snapshot)).status,200);
     assert.equal(JSON.parse(docs.status).services[0].name,"Updated VPN");
     assert.equal((await send("status","PUT",snapshot)).status,409);
-    const user={username:"db.user",firstName:"Database",lastName:"User",jobTitle:"Test",role:"admin",active:true,password:"long-test-password"};
+    const user={username:"db.user",email:"db.user@example.test",firstName:"Database",lastName:"User",jobTitle:"Test",role:"admin",active:true,password:"long-test-password"};
     assert.equal((await send("users","POST",user)).status,201);
     assert.equal(JSON.parse(docs.users)[0].username,"db.user");
     assert.ok(!docs.users.includes(user.password));

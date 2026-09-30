@@ -1,4 +1,5 @@
 "use strict";
+process.env.WELCOME_EMAIL_ENABLED = "false";
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs/promises");
@@ -24,7 +25,7 @@ test("individual users persist, enforce permissions and revoke sessions", async 
         method, headers: { Authorization: "Bearer " + token, "Content-Type": "application/json", ...headers },
         ...(body ? { body: JSON.stringify(body) } : {})
     });
-    const account = { username: "dan", password: "a-long-test-password", firstName: "Dan", lastName: "Test", jobTitle: "IT manager", role: "admin", active: true };
+    const account = { username: "dan", email: "dan@example.test", password: "a-long-test-password", firstName: "Dan", lastName: "Test", jobTitle: "IT manager", role: "admin", active: true };
     assert.equal((await send("users", "GET", null, "")).status, 401);
     assert.equal((await send("users", "POST", account, key, { Origin: "https://attacker.example" })).status, 403);
     assert.equal((await send("users", "POST", { ...account, password: "short" })).status, 400);

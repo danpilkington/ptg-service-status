@@ -109,12 +109,22 @@
     "PTG:supabase-atomic": {
       "active": false,
       "status": "operational",
-      "recoveredAt": "2026-09-23T13:39:10.835Z"
+      "ticketId": 1759,
+      "createdAt": "2026-09-30T01:05:12.343Z",
+      "recoveredAt": "2026-09-30T01:09:12.345Z",
+      "recoveryNoteAdded": true,
+      "recoveryStatus": 11,
+      "recoveryCompletedAt": "2026-09-30T01:09:13.237Z"
     },
     "PTG:supabase-hub": {
       "active": false,
       "status": "operational",
-      "recoveredAt": "2026-09-23T13:39:20.574Z"
+      "ticketId": 1760,
+      "createdAt": "2026-09-30T01:06:12.488Z",
+      "recoveredAt": "2026-09-30T01:09:13.249Z",
+      "recoveryNoteAdded": true,
+      "recoveryStatus": 11,
+      "recoveryCompletedAt": "2026-09-30T01:09:13.862Z"
     },
     "PTG:epicor-main-22f972a2": {
       "active": false,
@@ -149,12 +159,12 @@
     "PTG:epicor-reports-729bd7d6": {
       "active": false,
       "status": "operational",
-      "ticketId": 1654,
-      "createdAt": "2026-09-28T05:14:52.766Z",
-      "recoveredAt": "2026-09-28T05:15:52.849Z",
+      "ticketId": 1768,
+      "createdAt": "2026-09-30T05:15:13.753Z",
+      "recoveredAt": "2026-09-30T05:16:13.593Z",
       "recoveryNoteAdded": true,
       "recoveryStatus": 11,
-      "recoveryCompletedAt": "2026-09-28T05:15:53.623Z"
+      "recoveryCompletedAt": "2026-09-30T05:16:14.246Z"
     },
     "PTG:epicor-database-6966f287": {
       "active": false,
@@ -207,9 +217,11 @@
     },
     "PTG:hypermill-1f759485": {
       "active": true,
-      "status": "degraded",
+      "status": "recovering",
       "ticketId": 1561,
-      "createdAt": "2026-09-24T12:52:20.601Z"
+      "createdAt": "2026-09-24T12:52:20.601Z",
+      "recoveredAt": "2026-09-30T08:08:50.481Z",
+      "recoveryNoteAdded": true
     },
     "PTG:tncremo-e0427230": {
       "active": false,
@@ -220,6 +232,16 @@
       "active": false,
       "status": "operational",
       "recoveredAt": "2026-09-24T12:58:17.972Z"
+    },
+    "PTG:entra-connect-sync-73ec9be4": {
+      "active": false,
+      "status": "operational",
+      "ticketId": 1705,
+      "createdAt": "2026-09-28T15:18:37.104Z",
+      "recoveredAt": "2026-09-28T15:25:50.767Z",
+      "recoveryNoteAdded": true,
+      "recoveryStatus": 11,
+      "recoveryCompletedAt": "2026-09-28T15:25:52.402Z"
     }
   }
 }
