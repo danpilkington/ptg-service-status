@@ -11,9 +11,10 @@
       "status": "operational"
     },
     "Microsoft:intune": {
-      "active": true,
-      "status": "degraded",
-      "notifiedAt": "2026-09-30T13:25:15.184Z"
+      "active": false,
+      "status": "operational",
+      "notifiedAt": "2026-09-30T13:25:15.184Z",
+      "recoveredAt": "2026-09-30T15:17:42.758Z"
     },
     "PTG:company-portal": {
       "active": false,
