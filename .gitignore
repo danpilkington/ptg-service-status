@@ -14,8 +14,23 @@ availability.json
 *.transaction
 microsoft-cache.json
 backups/
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> 24567e62823c1f7663495a6e9b0965307c9f9854
+>>>>>>> e3b2c9fdaa2fb16b19aebfa2aecb10fdcee75923
 
 *.ptgbackup
 recovery-staging/
 health-state.json
 sql-backup-health.json
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+=======
+=======
+>>>>>>> ccc816cc7791549be2807bcc574140755fd05f7a
+>>>>>>> 24567e62823c1f7663495a6e9b0965307c9f9854
+>>>>>>> e3b2c9fdaa2fb16b19aebfa2aecb10fdcee75923

@@ -17,6 +17,7 @@
     const favouritesKey="ptg-dashboard-favourites";
     let favourites=new Set();try{favourites=window.PTGDashboard.parseFavourites(localStorage.getItem(favouritesKey));}catch{}
     const availabilityResults=new Map(),availabilityRequests=new Set();
+<<<<<<< HEAD
     function openService(id,writeUrl=true){
         selected=id;
         if(writeUrl){const url=new URL(location.href);url.searchParams.set("service",id);history.pushState(null,"",url);}
@@ -52,6 +53,9 @@
     window.addEventListener("popstate",()=>{setWallboard(new URL(location.href).searchParams.get("wallboard")==="1",false);if(latest)readServiceLink();});
     $("service-dialog").addEventListener("close",()=>{if(!selected)return;selected="";const url=new URL(location.href);if(url.searchParams.has("service")){url.searchParams.delete("service");history.replaceState(null,"",url);}});
     setWallboard(new URL(location.href).searchParams.get("wallboard")==="1",false);
+=======
+    function openService(id){selected=id;renderDialog();if(!$("service-dialog").open)$("service-dialog").showModal();}
+>>>>>>> e3b2c9fdaa2fb16b19aebfa2aecb10fdcee75923
     function toggleFavourite(id){
         favourites.has(id)?favourites.delete(id):favourites.add(id);
         let saved=true;try{localStorage.setItem(favouritesKey,JSON.stringify([...favourites]));}catch{saved=false;}

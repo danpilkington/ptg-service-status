@@ -88,7 +88,15 @@ require("./admin-api")(app, { statusFile: STATUS_FILE, monitor: healthMonitor, s
     const auditRaw=await storage.read("audit")||"[]";
     return {checkedAt:new Date().toISOString(),integrations:{...integrations.snapshot(),backup:await require("./ops/backup-health").backupHealth(process.env.SQL_BACKUP_HEALTH_FILE)},monitoring:healthMonitor.workerHealth(),automation:{...automation},checks:healthMonitor.details(status.services||[]),retention:{auditCount:JSON.parse(auditRaw).length,auditBytes:Buffer.byteLength(auditRaw),incidents:(status.incidents||[]).length,assessments:(status.microsoftAssessments||[]).length,incidentLimit:500,availabilityDays:400}};
 } });
+<<<<<<< HEAD
 const publicFiles = new Set(["/", "/index.html", "/info.html", "/style.css", "/app.js", "/public-ui.js", "/dashboard-summary.js", "/admin/", "/admin/index.html", "/admin/style.css", "/admin/app.js", "/admin/password.html", "/admin/password.js"]);
+=======
+<<<<<<< HEAD
+const publicFiles = new Set(["/", "/index.html", "/info.html", "/style.css", "/app.js", "/public-ui.js", "/dashboard-summary.js", "/admin/", "/admin/index.html", "/admin/style.css", "/admin/app.js", "/admin/password.html", "/admin/password.js"]);
+=======
+const publicFiles = new Set(["/", "/index.html", "/info.html", "/style.css", "/app.js", "/public-ui.js", "/admin/", "/admin/index.html", "/admin/style.css", "/admin/app.js", "/admin/password.html", "/admin/password.js"]);
+>>>>>>> 24567e62823c1f7663495a6e9b0965307c9f9854
+>>>>>>> e3b2c9fdaa2fb16b19aebfa2aecb10fdcee75923
 app.get(/^\/admin$/, (req, res) => res.redirect(302, "/admin/"));
 app.use((req, res, next) => {
     if (!["GET", "HEAD"].includes(req.method) || !publicFiles.has(req.path)) return next();
@@ -543,8 +551,16 @@ app.get("/api/status", async (request, response) => {
     response.json(responseBody);
 });
 
+<<<<<<< HEAD
 require("./public-availability").attachPublicAvailability(app,{storage,availability,microsoftIds:microsoftServiceDefinitions.map(s=>s.id)});
 
+=======
+<<<<<<< HEAD
+require("./public-availability").attachPublicAvailability(app,{storage,availability,microsoftIds:microsoftServiceDefinitions.map(s=>s.id)});
+
+=======
+>>>>>>> 24567e62823c1f7663495a6e9b0965307c9f9854
+>>>>>>> e3b2c9fdaa2fb16b19aebfa2aecb10fdcee75923
 app.get("/api/health", (request,response)=>{
     response.set("Cache-Control","no-store").json({status:"ok",checkedAt:new Date().toISOString()});
 });
