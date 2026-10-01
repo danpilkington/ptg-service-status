@@ -919,11 +919,7 @@
             const result=await response.json();
             if(!key||key!==requestedKey||accountRole!=="admin")return;
             const grid=$("integration-health");grid.replaceChildren();
-<<<<<<< HEAD
             const names={microsoft:"Microsoft Graph",freshservice:"Freshservice",teams:"Microsoft Teams",availability:"Availability recording",backup:"SQL backups"};
-=======
-            const names={microsoft:"Microsoft Graph",freshservice:"Freshservice",teams:"Microsoft Teams",availability:"Availability recording"};
->>>>>>> ccc816cc7791549be2807bcc574140755fd05f7a
             for(const [id,state] of Object.entries(result.integrations)){
                 const card=text("article","","integration-item");card.dataset.state=state.state;
                 card.append(text("h4",names[id]||id),text("p",state.state==="healthy"?"Healthy":state.state==="disabled"?"Not configured":state.state==="waiting"?"Awaiting first check":state.state==="stale"?"Checks overdue":"Needs attention"));
