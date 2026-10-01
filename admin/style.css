@@ -381,3 +381,18 @@ form>button{margin-top:16px}
 
 .modern-admin .user-field-email{grid-column:1 / -1}
 .user-account .delete-user{color:#a52520;border-color:#e7b5b2;margin-left:8px}
+
+.review-request,.audit-entry{padding:16px 0;border-bottom:1px solid var(--border)}
+.review-request h3{font-size:16px;margin-bottom:6px}
+.review-request pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f3f6fa;padding:12px;font-size:12px;max-height:280px;overflow:auto}
+.review-request details{margin:12px 0}
+.review-request button{margin:8px 8px 0 0}
+.audit-entry p{font-size:12px;margin:4px 0}
+.report-controls{align-items:end;margin:16px 0}
+.report-controls label{margin:0}
+.table-scroll{overflow-x:auto}
+.table-scroll table{border-collapse:collapse;width:100%;font-size:12px}
+.table-scroll th,.table-scroll td{padding:10px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+.table-scroll th{background:#eef4fa}
+
+.integration-panel{margin:1.25rem 0}.integration-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1rem}.integration-item{padding:1rem;border:1px solid #d9dfe4;border-radius:12px;overflow-wrap:anywhere}.integration-item h4{margin:0 0 .5rem}.integration-item p{margin:.4rem 0}.integration-item[data-state="error"],.integration-item[data-state="stale"]{border-left:4px solid #b45309}.integration-item[data-state="healthy"]{border-left:4px solid #16804a}

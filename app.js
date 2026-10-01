@@ -23,7 +23,7 @@
     };
 
     let serviceCards = [];
-    let requestedServiceHighlighted = false;
+
 
     function escapeHtml(value) {
         return String(value ?? "").replace(
@@ -251,33 +251,6 @@
         }
     }
 
-    function highlightRequestedService() {
-        const requestedService = new URLSearchParams(
-            window.location.search
-        ).get("service")?.trim().toLowerCase();
-
-        if (!requestedService) {
-            return;
-        }
-
-        const card = serviceCards.find(
-            item => item.dataset.service === requestedService
-        );
-
-        if (!card) {
-            return;
-        }
-
-        requestedServiceHighlighted = true;
-        card.classList.add("selected");
-
-        setTimeout(() => {
-            card.scrollIntoView({
-                behavior: "smooth",
-                block: "center"
-            });
-        }, 100);
-    }
 
     function renderStatus(data) {
         const services = Array.isArray(data.services)
@@ -315,7 +288,11 @@
         window.PTGView.update(data);
         updateSupportUrls(data.supportUrls);
         updateTimestamp(data.checkedAt || data.publishedAt);
-        if (!requestedServiceHighlighted) highlightRequestedService();
+        let providerWarning=document.getElementById("microsoft-freshness-warning");
+        if(!providerWarning){providerWarning=document.createElement("p");providerWarning.id="microsoft-freshness-warning";providerWarning.className="provider-freshness-warning";providerWarning.setAttribute("role","status");document.getElementById("main").prepend(providerWarning);}
+        providerWarning.hidden=data.microsoftAvailable;
+        providerWarning.textContent=data.microsoftCheckedAt?"Microsoft data is stale. Showing the last known services and notices from "+new Date(data.microsoftCheckedAt).toLocaleString("en-GB")+". Current Microsoft availability has not been verified.":"Microsoft status is unavailable. PTG service information remains available.";
+
 
     }
 
@@ -422,7 +399,7 @@ function updateCountdown() {
     }
 
     document.getElementById("refresh-status")?.addEventListener("click", refresh);
-    highlightRequestedService();
+
     window.addEventListener("focus", refresh);
     refresh();
     window.setInterval(updateCountdown, 1000);

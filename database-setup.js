@@ -45,7 +45,7 @@ async function activate(envFile) {
 }
 async function main(args = process.argv.slice(2)) {
     const command = args[0] || "check";
-    if (!["check", "migrate"].includes(command)) throw new Error("Use check or migrate --site-stopped [--activate].");
+    if (!["check", "migrate", "upgrade"].includes(command)) throw new Error("Use check, upgrade, or migrate --site-stopped [--activate].");
     if (command === "migrate" && !args.includes("--site-stopped"))
         throw new Error("Stop the website first, then run: node database-setup.js migrate --site-stopped --activate");
     const store = createSqlStorage();
@@ -54,6 +54,7 @@ async function main(args = process.argv.slice(2)) {
         const info = (await pool.request().query("SELECT DB_NAME() AS DatabaseName, SUSER_SNAME() AS WindowsAccount, compatibility_level AS CompatibilityLevel FROM sys.databases WHERE name = DB_NAME();")).recordset[0];
         console.log("Connected to " + info.DatabaseName + " as " + info.WindowsAccount + ".");
         if (Number(info.CompatibilityLevel) < 130) throw new Error("SQL Server 2016+ with database compatibility level 130+ is required. Ask your database administrator to review compatibility.");
+        if (command === "upgrade") { await store.upgrade(); console.log("Feature storage upgrade complete. Existing records retained."); return; }
         if (command === "check") {
             const schema = (await pool.request().query("SELECT OBJECT_ID(N'ptg_status.Documents', N'U') AS TableId;")).recordset[0];
             console.log(schema.TableId ? "Storage table exists." : "Connection works. The storage tables still need to be created by migration.");
