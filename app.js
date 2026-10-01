@@ -292,7 +292,15 @@
         if(!providerWarning){providerWarning=document.createElement("p");providerWarning.id="microsoft-freshness-warning";providerWarning.className="provider-freshness-warning";providerWarning.setAttribute("role","status");document.getElementById("main").prepend(providerWarning);}
         providerWarning.hidden=data.microsoftAvailable;
         providerWarning.textContent=data.microsoftCheckedAt?"Microsoft data is stale. Showing the last known services and notices from "+new Date(data.microsoftCheckedAt).toLocaleString("en-GB")+". Current Microsoft availability has not been verified.":"Microsoft status is unavailable. PTG service information remains available.";
+<<<<<<< HEAD
 
+=======
+<<<<<<< HEAD
+
+=======
+        if (!requestedServiceHighlighted) highlightRequestedService();
+>>>>>>> e3b2c9fdaa2fb16b19aebfa2aecb10fdcee75923
+>>>>>>> af22431af97badf94adb0f3bfcc244c088331d38
 
     }
 

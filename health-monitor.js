@@ -160,7 +160,19 @@ function classifyResult(result) {
 }
 function advance(previous,result,now) {
     result = classifyResult(result);
+<<<<<<< HEAD
     if (result.kind === "monitor-error") return {...result, failures:0, successes:0, status:"unknown", lastSuccessfulCheckAt:previous?.lastSuccessfulCheckAt||null, checkedAt:new Date(now).toISOString()};
+=======
+<<<<<<< HEAD
+    if (result.kind === "monitor-error") return {...result, failures:0, successes:0, status:"unknown", lastSuccessfulCheckAt:previous?.lastSuccessfulCheckAt||null, checkedAt:new Date(now).toISOString()};
+=======
+<<<<<<< HEAD
+    if (result.kind === "monitor-error") return {...result, failures:0, successes:0, status:"unknown", lastSuccessfulCheckAt:previous?.lastSuccessfulCheckAt||null, checkedAt:new Date(now).toISOString()};
+=======
+    if (result.kind === "monitor-error") return {...result, failures:0, successes:0, status:"unknown", checkedAt:new Date(now).toISOString()};
+>>>>>>> 24567e62823c1f7663495a6e9b0965307c9f9854
+>>>>>>> e3b2c9fdaa2fb16b19aebfa2aecb10fdcee75923
+>>>>>>> af22431af97badf94adb0f3bfcc244c088331d38
     const failures=result.ok?0:(previous?.failures||0)+1;
     const successes=result.ok?(previous?.successes||0)+1:0;
     let status=previous?.status||"unknown";
@@ -218,7 +230,19 @@ function createMonitor(statusFile, check=probe, storage=null) {
             const status=valid&&current&&!current.stale?current.status:"unknown";
             const monitorError=!valid||current?.kind==="monitor-error";
             return {...publicService,status,statusText:monitorError?"Monitor needs attention":current?.stale?"Monitoring data is stale":status==="operational"?"Operational":status==="outage"?"Health check failed":"Awaiting health checks",
+<<<<<<< HEAD
                 healthCheck:{checkedAt:current?.checkedAt||null,lastSuccessfulCheckAt:current?.lastSuccessfulCheckAt||null,status,stale:!!current?.stale,monitorError}};
+=======
+<<<<<<< HEAD
+                healthCheck:{checkedAt:current?.checkedAt||null,lastSuccessfulCheckAt:current?.lastSuccessfulCheckAt||null,status,stale:!!current?.stale,monitorError}};
+=======
+<<<<<<< HEAD
+                healthCheck:{checkedAt:current?.checkedAt||null,lastSuccessfulCheckAt:current?.lastSuccessfulCheckAt||null,status,stale:!!current?.stale,monitorError}};
+=======
+                healthCheck:{checkedAt:current?.checkedAt||null,status,stale:!!current?.stale,monitorError}};
+>>>>>>> 24567e62823c1f7663495a6e9b0965307c9f9854
+>>>>>>> e3b2c9fdaa2fb16b19aebfa2aecb10fdcee75923
+>>>>>>> af22431af97badf94adb0f3bfcc244c088331d38
         });}
     };
 }

@@ -17,6 +17,10 @@
     const favouritesKey="ptg-dashboard-favourites";
     let favourites=new Set();try{favourites=window.PTGDashboard.parseFavourites(localStorage.getItem(favouritesKey));}catch{}
     const availabilityResults=new Map(),availabilityRequests=new Set();
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> af22431af97badf94adb0f3bfcc244c088331d38
     function openService(id,writeUrl=true){
         selected=id;
         if(writeUrl){const url=new URL(location.href);url.searchParams.set("service",id);history.pushState(null,"",url);}
@@ -25,6 +29,7 @@
     }
     function serviceLink(id){const url=new URL(location.pathname,location.origin);url.searchParams.set("service",id);return url.href;}
     function readServiceLink(){const id=new URL(location.href).searchParams.get("service");if(id)openService(id,false);else {selected="";$("service-dialog").close();}}
+<<<<<<< HEAD
     let wallboard=false,wallboardPage=0,rotationPaused=false,wallboardPages=1;
     let wallboardFrame=0;
     function scheduleWallboard(){cancelAnimationFrame(wallboardFrame);wallboardFrame=requestAnimationFrame(renderWallboard);}
@@ -56,6 +61,16 @@
     }
     window.addEventListener("resize",scheduleWallboard);
     document.fonts?.ready.then(scheduleWallboard);
+=======
+    let wallboard=false,wallboardPage=0,rotationPaused=false;
+    function renderWallboard(){
+        if(!wallboard){cards.forEach(c=>c.classList.remove("wallboard-offpage"));return;}
+        const visible=cards.filter(c=>!c.hidden),pages=Math.max(1,Math.ceil(visible.length/8));
+        wallboardPage=wallboardPage%pages;
+        cards.forEach(c=>c.classList.toggle("wallboard-offpage",!visible.slice(wallboardPage*8,wallboardPage*8+8).includes(c)));
+        $("wallboard-page").textContent="Page "+(wallboardPage+1)+" of "+pages+" · "+visible.length+" services · rotates every 15 seconds";
+    }
+>>>>>>> af22431af97badf94adb0f3bfcc244c088331d38
     function setWallboard(enabled,writeUrl=true){
         wallboard=enabled;document.body.classList.toggle("wallboard-active",enabled);$("wallboard-controls").hidden=!enabled;
         $("wallboard-toggle").setAttribute("aria-pressed",String(enabled));
@@ -66,15 +81,29 @@
     $("wallboard-toggle").onclick=()=>setWallboard(!wallboard);
     $("wallboard-exit").onclick=()=>setWallboard(false);
     $("wallboard-next").onclick=()=>{wallboardPage++;renderWallboard();};
+<<<<<<< HEAD
     $("wallboard-previous").onclick=()=>{wallboardPage=wallboardPages+wallboardPage-1;renderWallboard();};
     $("wallboard-pause").onclick=()=>{rotationPaused=!rotationPaused;$("wallboard-pause").textContent=rotationPaused?"Resume rotation":"Pause rotation";$("wallboard-pause").setAttribute("aria-pressed",String(rotationPaused));renderWallboard();};
     $("wallboard-fullscreen").onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();$("wallboard-feedback").textContent="";}catch{$("wallboard-feedback").textContent="Full screen is unavailable. Wallboard mode remains active.";}};
     document.addEventListener("fullscreenchange",()=>{$("wallboard-fullscreen").textContent=document.fullscreenElement?"Leave full screen":"Full screen";scheduleWallboard();});
     setInterval(()=>{if(wallboard&&wallboardPages>1&&!rotationPaused&&!document.hidden&&!$("service-dialog").open){wallboardPage++;renderWallboard();}},15000);
+=======
+    $("wallboard-previous").onclick=()=>{wallboardPage=Math.max(1,Math.ceil(cards.filter(c=>!c.hidden).length/8))+wallboardPage-1;renderWallboard();};
+    $("wallboard-pause").onclick=()=>{rotationPaused=!rotationPaused;$("wallboard-pause").textContent=rotationPaused?"Resume rotation":"Pause rotation";$("wallboard-pause").setAttribute("aria-pressed",String(rotationPaused));};
+    $("wallboard-fullscreen").onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();$("wallboard-feedback").textContent="";}catch{$("wallboard-feedback").textContent="Full screen is unavailable. Wallboard mode remains active.";}};
+    document.addEventListener("fullscreenchange",()=>{$("wallboard-fullscreen").textContent=document.fullscreenElement?"Leave full screen":"Full screen";});
+    setInterval(()=>{if(wallboard&&!rotationPaused&&!document.hidden&&!$("service-dialog").open){wallboardPage++;renderWallboard();}},15000);
+>>>>>>> af22431af97badf94adb0f3bfcc244c088331d38
     $("copy-service-link").onclick=async()=>{try{await navigator.clipboard.writeText(serviceLink(selected));$("share-feedback").textContent="Service link copied.";}catch{$("share-service-url").focus();$("share-service-url").select();$("share-feedback").textContent="Select and copy the link below.";}};
     window.addEventListener("popstate",()=>{setWallboard(new URL(location.href).searchParams.get("wallboard")==="1",false);if(latest)readServiceLink();});
     $("service-dialog").addEventListener("close",()=>{if(!selected)return;selected="";const url=new URL(location.href);if(url.searchParams.has("service")){url.searchParams.delete("service");history.replaceState(null,"",url);}});
     setWallboard(new URL(location.href).searchParams.get("wallboard")==="1",false);
+<<<<<<< HEAD
+=======
+=======
+    function openService(id){selected=id;renderDialog();if(!$("service-dialog").open)$("service-dialog").showModal();}
+>>>>>>> e3b2c9fdaa2fb16b19aebfa2aecb10fdcee75923
+>>>>>>> af22431af97badf94adb0f3bfcc244c088331d38
     function toggleFavourite(id){
         favourites.has(id)?favourites.delete(id):favourites.add(id);
         let saved=true;try{localStorage.setItem(favouritesKey,JSON.stringify([...favourites]));}catch{saved=false;}
