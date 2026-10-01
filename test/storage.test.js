@@ -13,7 +13,7 @@ test("file storage rejects racing writes and preserves the winning snapshot", as
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), "ptg-storage-"));
     const file = path.join(dir, "status.json");
     await fs.writeFile(file, '{"services":[]}');
-    t.after(async()=>{for(const name of await fs.readdir(dir))await fs.unlink(path.join(dir,name));await fs.rmdir(dir);});
+    t.after(async()=>{for(const name of await fs.readdir(dir))await fs.unlink(path.join(dir,name));for(const sidecar of ["audit.json","approvals.json","availability.json"])await fs.unlink(path.join(dir,sidecar)).catch(e=>{if(e.code!=="ENOENT")throw e;});await fs.rmdir(dir);});
     const a=createFileStorage(file),b=createFileStorage(file);
     const old=revision(await a.read("status"));
     const results=await Promise.allSettled([a.write("status",'{"services":[1]}',old),b.write("status",'{"services":[2]}',old)]);
@@ -41,6 +41,7 @@ test("publishing, accounts and health monitoring use injected storage without lo
     const storage={read:async name=>docs[name],write:async(name,content,expected)=>{
         if(revision(docs[name])!==expected){const e=new Error("Conflict");e.status=409;throw e;}docs[name]=content;
     }};
+    require("./transactional-fixture")(storage);
     const initial=JSON.parse(docs.status); initial.services[0].monitor=require("../health-monitor").validate(initial.services[0].monitor); docs.status=JSON.stringify(initial);
     const monitor=require("../health-monitor").createMonitor("nonexistent",async()=>({ok:true,message:"OK",latencyMs:1}),storage);
     await monitor.tick();
@@ -100,7 +101,7 @@ test("migration is repeatable, preserves complete records, refuses overwrite and
 });
 test("activation only changes the storage switch and preserves other environment settings",async t=>{
     const dir=await fs.mkdtemp(path.join(os.tmpdir(),"ptg-env-")),file=path.join(dir,".env");
-    t.after(async()=>{await fs.unlink(file);await fs.rmdir(dir);});
+    t.after(async()=>{await fs.unlink(file);for(const sidecar of ["audit.json","approvals.json","availability.json"])await fs.unlink(path.join(dir,sidecar)).catch(e=>{if(e.code!=="ENOENT")throw e;});await fs.rmdir(dir);});
     await fs.writeFile(file,"# config\nADMIN_API_KEY=test-value\nSTORAGE_DRIVER=file\nSQL_DATABASE=PTG-STATUS\n");
     await activate(file);
     const text=await fs.readFile(file,"utf8");

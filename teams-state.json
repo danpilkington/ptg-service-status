@@ -2,9 +2,10 @@
   "version": 1,
   "services": {
     "Microsoft:sharepoint-online": {
-      "active": true,
-      "status": "degraded",
-      "notifiedAt": "2026-09-30T13:33:32.121Z"
+      "active": false,
+      "status": "operational",
+      "notifiedAt": "2026-09-30T13:33:32.121Z",
+      "recoveredAt": "2026-09-30T16:07:42.302Z"
     },
     "Microsoft:onedrive": {
       "active": false,
@@ -39,8 +40,8 @@
     "PTG:print-server-62c94c74": {
       "active": false,
       "status": "operational",
-      "notifiedAt": "2026-09-30T08:37:54.908Z",
-      "recoveredAt": "2026-09-30T08:43:56.843Z"
+      "notifiedAt": "2026-10-01T03:51:54.019Z",
+      "recoveredAt": "2026-10-01T03:52:52.838Z"
     },
     "PTG:building-access-controls-fe4fbe1c": {
       "active": false,
@@ -52,7 +53,9 @@
     },
     "PTG:dc4-b746bfc5": {
       "active": false,
-      "status": "operational"
+      "status": "operational",
+      "notifiedAt": "2026-10-01T03:18:52.375Z",
+      "recoveredAt": "2026-10-01T03:19:52.597Z"
     },
     "PTG:dc3-f2b7218c": {
       "active": false,
@@ -60,7 +63,9 @@
     },
     "PTG:dc5-99cf78f7": {
       "active": false,
-      "status": "operational"
+      "status": "operational",
+      "notifiedAt": "2026-10-01T03:54:53.376Z",
+      "recoveredAt": "2026-10-01T03:56:53.177Z"
     },
     "PTG:dc6-18582eef": {
       "active": false,
@@ -68,11 +73,15 @@
     },
     "PTG:atomic-supabase-50e6e994": {
       "active": false,
-      "status": "operational"
+      "status": "operational",
+      "notifiedAt": "2026-10-01T03:32:52.609Z",
+      "recoveredAt": "2026-10-01T03:34:52.790Z"
     },
     "PTG:ps2-3cfb594a": {
       "active": false,
-      "status": "operational"
+      "status": "operational",
+      "notifiedAt": "2026-10-01T01:57:52.372Z",
+      "recoveredAt": "2026-10-01T02:00:52.217Z"
     },
     "PTG:supabase-atomic": {
       "active": false,
@@ -88,25 +97,33 @@
     },
     "PTG:epicor-main-22f972a2": {
       "active": false,
-      "status": "operational"
+      "status": "operational",
+      "notifiedAt": "2026-10-01T05:03:59.090Z",
+      "recoveredAt": "2026-10-01T05:15:55.829Z"
     },
     "PTG:epicor-app-0cd35039": {
       "active": false,
-      "status": "operational"
+      "status": "operational",
+      "notifiedAt": "2026-10-01T05:03:59.553Z",
+      "recoveredAt": "2026-10-01T05:11:57.417Z"
     },
     "PTG:epicor-bartender-af823ec4": {
       "active": false,
-      "status": "operational"
+      "status": "operational",
+      "notifiedAt": "2026-10-01T05:16:54.394Z",
+      "recoveredAt": "2026-10-01T05:18:56.539Z"
     },
     "PTG:epicor-reports-729bd7d6": {
       "active": false,
       "status": "operational",
-      "notifiedAt": "2026-09-30T05:15:13.756Z",
-      "recoveredAt": "2026-09-30T05:16:13.593Z"
+      "notifiedAt": "2026-10-01T05:04:57.468Z",
+      "recoveredAt": "2026-10-01T05:12:55.016Z"
     },
     "PTG:epicor-database-6966f287": {
       "active": false,
-      "status": "operational"
+      "status": "operational",
+      "notifiedAt": "2026-10-01T05:20:54.133Z",
+      "recoveredAt": "2026-10-01T05:22:54.286Z"
     },
     "PTG:timesheet-data-45acf53f": {
       "active": false,
@@ -147,10 +164,9 @@
       "recoveredAt": "2026-09-25T10:54:18.577Z"
     },
     "PTG:hypermill-1f759485": {
-      "active": false,
-      "status": "operational",
-      "notifiedAt": "2026-09-25T10:52:20.253Z",
-      "recoveredAt": "2026-09-30T08:08:50.482Z"
+      "active": true,
+      "status": "degraded",
+      "notifiedAt": "2026-10-01T07:24:40.178Z"
     },
     "PTG:entra-connect-sync-73ec9be4": {
       "active": false,
