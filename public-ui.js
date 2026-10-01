@@ -14,6 +14,74 @@
     let cards = [];
     document.body.dataset.density = "compact";
     let latest = null, filter = "all", selected = "";
+    const favouritesKey="ptg-dashboard-favourites";
+    let favourites=new Set();try{favourites=window.PTGDashboard.parseFavourites(localStorage.getItem(favouritesKey));}catch{}
+    const availabilityResults=new Map(),availabilityRequests=new Set();
+    function openService(id,writeUrl=true){
+        selected=id;
+        if(writeUrl){const url=new URL(location.href);url.searchParams.set("service",id);history.pushState(null,"",url);}
+        $("share-service-url").value=serviceLink(id);$("share-feedback").textContent="";
+        renderDialog();if(!$("service-dialog").open)$("service-dialog").showModal();
+    }
+    function serviceLink(id){const url=new URL(location.pathname,location.origin);url.searchParams.set("service",id);return url.href;}
+    function readServiceLink(){const id=new URL(location.href).searchParams.get("service");if(id)openService(id,false);else {selected="";$("service-dialog").close();}}
+    let wallboard=false,wallboardPage=0,rotationPaused=false,wallboardPages=1;
+    let wallboardFrame=0;
+    function scheduleWallboard(){cancelAnimationFrame(wallboardFrame);wallboardFrame=requestAnimationFrame(renderWallboard);}
+    function renderWallboard(){
+        cards.forEach(c=>c.classList.remove("wallboard-offpage"));
+        if(!wallboard)return;
+        const visible=cards.filter(c=>!c.hidden),grid=$("service-grid");
+        const controls=["wallboard-previous","wallboard-next","wallboard-pause"].map($);
+        controls.forEach(c=>{c.hidden=true;});
+        $("wallboard-page").textContent=visible.length+" services · All services on one page";
+        // Measure the actual cards after responsive layout, including wrapped names.
+        const measure=()=>{
+            const style=getComputedStyle(grid),columns=style.gridTemplateColumns.split(" ").length;
+            const rowHeight=Math.max(160,...visible.map(c=>c.getBoundingClientRect().height));
+            const gap=parseFloat(style.rowGap)||0;
+            const remaining=Math.max(0,innerHeight-grid.getBoundingClientRect().top-24);
+            return columns*Math.max(1,Math.floor((remaining+gap)/(rowHeight+gap)));
+        };
+        let capacity=measure();
+        wallboardPages=Math.max(1,Math.ceil(visible.length/capacity));
+        if(wallboardPages>1){
+            controls.forEach(c=>{c.hidden=false;});
+            capacity=measure();wallboardPages=Math.max(1,Math.ceil(visible.length/capacity));
+            wallboardPage=((wallboardPage%wallboardPages)+wallboardPages)%wallboardPages;
+            const pageCards=new Set(visible.slice(wallboardPage*capacity,(wallboardPage+1)*capacity));
+            cards.forEach(c=>c.classList.toggle("wallboard-offpage",!pageCards.has(c)));
+            $("wallboard-page").textContent="Page "+(wallboardPage+1)+" of "+wallboardPages+" · "+visible.length+" services · "+(rotationPaused?"Rotation paused":"rotates every 15 seconds");
+        }else wallboardPage=0;
+    }
+    window.addEventListener("resize",scheduleWallboard);
+    document.fonts?.ready.then(scheduleWallboard);
+    function setWallboard(enabled,writeUrl=true){
+        wallboard=enabled;document.body.classList.toggle("wallboard-active",enabled);$("wallboard-controls").hidden=!enabled;
+        $("wallboard-toggle").setAttribute("aria-pressed",String(enabled));
+        if(writeUrl){const url=new URL(location.href);enabled?url.searchParams.set("wallboard","1"):url.searchParams.delete("wallboard");history.pushState(null,"",url);}
+        if(!enabled&&document.fullscreenElement)document.exitFullscreen().catch(()=>{});
+        renderWallboard();
+    }
+    $("wallboard-toggle").onclick=()=>setWallboard(!wallboard);
+    $("wallboard-exit").onclick=()=>setWallboard(false);
+    $("wallboard-next").onclick=()=>{wallboardPage++;renderWallboard();};
+    $("wallboard-previous").onclick=()=>{wallboardPage=wallboardPages+wallboardPage-1;renderWallboard();};
+    $("wallboard-pause").onclick=()=>{rotationPaused=!rotationPaused;$("wallboard-pause").textContent=rotationPaused?"Resume rotation":"Pause rotation";$("wallboard-pause").setAttribute("aria-pressed",String(rotationPaused));renderWallboard();};
+    $("wallboard-fullscreen").onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();$("wallboard-feedback").textContent="";}catch{$("wallboard-feedback").textContent="Full screen is unavailable. Wallboard mode remains active.";}};
+    document.addEventListener("fullscreenchange",()=>{$("wallboard-fullscreen").textContent=document.fullscreenElement?"Leave full screen":"Full screen";scheduleWallboard();});
+    setInterval(()=>{if(wallboard&&wallboardPages>1&&!rotationPaused&&!document.hidden&&!$("service-dialog").open){wallboardPage++;renderWallboard();}},15000);
+    $("copy-service-link").onclick=async()=>{try{await navigator.clipboard.writeText(serviceLink(selected));$("share-feedback").textContent="Service link copied.";}catch{$("share-service-url").focus();$("share-service-url").select();$("share-feedback").textContent="Select and copy the link below.";}};
+    window.addEventListener("popstate",()=>{setWallboard(new URL(location.href).searchParams.get("wallboard")==="1",false);if(latest)readServiceLink();});
+    $("service-dialog").addEventListener("close",()=>{if(!selected)return;selected="";const url=new URL(location.href);if(url.searchParams.has("service")){url.searchParams.delete("service");history.replaceState(null,"",url);}});
+    setWallboard(new URL(location.href).searchParams.get("wallboard")==="1",false);
+    function toggleFavourite(id){
+        favourites.has(id)?favourites.delete(id):favourites.add(id);
+        let saved=true;try{localStorage.setItem(favouritesKey,JSON.stringify([...favourites]));}catch{saved=false;}
+        $("favourite-feedback").textContent=saved?"Favourites saved in this browser.":"Favourites are available for this visit. Browser storage is unavailable.";
+        if(latest)syncServices(latest.services||[]);applyFilters();
+        if(favourites.has(id))$("service-grid").scrollTop=0;
+    }
 
     function syncServices(services) {
         const defaults = {
@@ -33,9 +101,9 @@
         const grid = $("service-grid"), existing = new Map(cards.map(c => [c.dataset.service, c]));
         const seen = new Set();
         grid.querySelectorAll(".service-group-heading").forEach(el => el.remove());
-        const ordered = [...services].sort((a,b) => (a.source === "Microsoft" ? -1 : 0) - (b.source === "Microsoft" ? -1 : 0) || (a.order ?? 100) - (b.order ?? 100));
+        const ordered = [...services].sort((a,b) => Number(favourites.has(b.id))-Number(favourites.has(a.id)) || (a.source === "Microsoft" ? -1 : 0) - (b.source === "Microsoft" ? -1 : 0) || (a.order ?? 100) - (b.order ?? 100));
         const groups = new Map();
-        for (const service of ordered) { const group = service.source === "Microsoft" ? "Microsoft 365 Managed Services" : String(service.group || "Progressive Technology Managed Services").trim() || "Progressive Technology Managed Services"; if (!groups.has(group)) groups.set(group, []); groups.get(group).push(service); }
+        for (const service of ordered) { const group = favourites.has(service.id) ? "Your favourites" : service.source === "Microsoft" ? "Microsoft 365 Managed Services" : String(service.group || "Progressive Technology Managed Services").trim() || "Progressive Technology Managed Services"; if (!groups.has(group)) groups.set(group, []); groups.get(group).push(service); }
         let currentGroup = "";
         for (const [group, grouped] of groups) for (const service of grouped) {
             if (!service || typeof service.id !== "string" || seen.has(service.id)) continue;
@@ -47,24 +115,30 @@
             if (!card) {
                 card = document.createElement("article");
                 card.className = "service unknown"; card.id = "svc-" + service.id; card.dataset.service = service.id;
-                card.innerHTML = '<div class="icon" aria-hidden="true"></div><div class="service-content"><h3></h3><p class="service-description"></p><span class="pill unknown">Loading…</span><span class="source-badge"></span><button type="button" class="service-details">View details</button></div>';
+                card.innerHTML = '<div class="icon" aria-hidden="true"></div><div class="service-content"><h3></h3><p class="service-description"></p><span class="pill unknown">Loading…</span><span class="source-badge"></span><div class="service-actions"><button type="button" class="service-details">View details</button><button type="button" class="service-favourite" aria-pressed="false">☆ Favourite</button></div></div>';
                 card.querySelector("button").addEventListener("click", () => {
-                    selected = service.id; renderDialog(); $("service-dialog").showModal();
+                    openService(service.id);
                 });
             }
+            card.querySelector(".service-favourite").onclick=()=>toggleFavourite(service.id);
+            const favouriteButton=card.querySelector(".service-favourite");
+            favouriteButton.textContent=favourites.has(service.id)?"★ Favourited":"☆ Favourite";
+            favouriteButton.setAttribute("aria-pressed",String(favourites.has(service.id)));
+            favouriteButton.setAttribute("aria-label",(favourites.has(service.id)?"Remove ":"Add ")+name+(favourites.has(service.id)?" from favourites":" to favourites"));
             card.dataset.group = group;
             card.title = name;
             card.dataset.source = service.source === "Microsoft" ? "microsoft" : "ptg";
             card.querySelector("h3").textContent = name;
             card.querySelector(".icon").textContent = fallback[2] || name.slice(0, 1).toUpperCase();
             card.querySelector(".service-description").textContent = service.description ?? fallback[1] ?? "";
-            card.querySelector(".source-badge").textContent = card.dataset.source === "microsoft" ? "Microsoft 365 Managed Service" : group;
+            card.querySelector(".source-badge").textContent = card.dataset.source === "microsoft" ? "Microsoft 365 Managed Service" : service.group||"Progressive Technology Managed Services";
             card.querySelector("button").setAttribute("aria-label", "View details for " + name);
             grid.append(card);
         }
         existing.forEach((card, id) => { if (!seen.has(id)) card.remove(); });
         cards = [...grid.querySelectorAll(".service[data-service]")];
         $("service-load-state").hidden = true;
+        $("favourite-count").textContent=cards.filter(c=>favourites.has(c.dataset.service)).length;
         return cards;
     }
 
@@ -122,7 +196,7 @@
         const query = $("service-search").value.trim().toLowerCase();
         let count = 0;
         for (const card of cards) {
-            const match = filter === "all" || filter === card.dataset.source || (filter === "affected" &&
+            const match = filter === "all" || filter === card.dataset.source || filter === "favourites" && favourites.has(card.dataset.service) || (filter === "affected" &&
                 (["advisory", "degraded", "outage", "maintenance"].some(s => card.classList.contains(s)) ||
                     latest?.incidents?.some(i => i.serviceId === card.dataset.service && i.impact === "confirmed")));
             card.hidden = !match || !(card.querySelector("h3").textContent + " " + card.querySelector(".service-description").textContent).toLowerCase().includes(query);
@@ -130,7 +204,43 @@
         }
         document.querySelectorAll(".service-group-heading").forEach(h => { h.hidden = !cards.some(c => c.dataset.group === h.dataset.group && !c.hidden); });
         $("service-count").textContent = count + " of " + cards.length + " services shown";
+        renderWallboard();
         $("filter-empty").hidden = count !== 0;
+        $("filter-empty").querySelector("p").textContent=filter==="favourites"&&!cards.some(c=>favourites.has(c.dataset.service))?"No favourites yet. Choose All services and use ☆ Favourite to pin the services you rely on.":"No services match your search or filter.";
+    }
+    function renderAffected(){
+        const container=$("affected-service-list");container.replaceChildren();
+        const affected=window.PTGDashboard.affectedServices(latest);
+        const unknown=(latest.services||[]).filter(s=>s.status==="unknown"||s.stale).length;
+        $("affected-summary").textContent=affected.length?affected.length+" service"+(affected.length===1?" needs":"s need")+" attention. Microsoft reports and PTG impact are shown separately.":unknown?"No reported service issues. Some status information is unavailable or stale.":"No services currently have reported issues.";
+        $("show-affected-services").hidden=!affected.length;
+        for(const item of affected.slice(0,6)){
+            const article=document.createElement("article");article.className="affected-service";article.dataset.status=item.status;
+            const title=document.createElement("h3");title.textContent=item.name;
+            const impact=document.createElement("p");impact.className="affected-impact";impact.textContent=({outage:"Service outage",degraded:"Degraded performance",advisory:"Advisory",maintenance:"Maintenance"}[item.status]||"Incident reported")+" · "+item.impact+(item.stale?" · Last known report":"");
+            const guidance=document.createElement("p");guidance.className="affected-guidance";guidance.textContent=item.guidance;
+            const action=document.createElement("button");action.type="button";action.className="secondary";action.textContent="View guidance";action.setAttribute("aria-label","View guidance for "+item.name);action.onclick=()=>openService(item.id);
+            article.append(title,impact,guidance,action);container.append(article);
+        }
+    }
+    const duration=seconds=>{const minutes=Math.round((seconds||0)/60);return minutes>=60?Math.floor(minutes/60)+"h "+minutes%60+"m":minutes+"m";};
+    function availabilityHtml(id){
+        const cached=availabilityResults.get(id);
+        if(!cached)return '<section class="service-availability"><h3>Observed availability</h3><p role="status">Loading this month’s observations…</p></section>';
+        if(cached.error)return '<section class="service-availability"><h3>Observed availability</h3><p role="status">Availability observations could not be loaded.</p><button id="retry-availability" type="button" class="secondary">Retry availability</button></section>';
+        const result=cached.data,percent=Number.isFinite(result.operationalPercent)?result.operationalPercent.toFixed(2)+"%":"No observations yet";
+        return '<section class="service-availability"><h3>Observed availability · '+escape(result.month)+'</h3><dl class="availability-stats"><div><dt>Fully operational</dt><dd>'+escape(percent)+'</dd></div><div><dt>Monitoring coverage</dt><dd>'+escape(Number(result.coverage||0).toFixed(1))+ '%</dd></div><div><dt>Observed outage time</dt><dd>'+escape(duration(result.outageSeconds))+'</dd></div><div><dt>Outage starts</dt><dd>'+escape(result.outageCount||0)+'</dd></div></dl><p class="help">Month to date, measured in UTC. Operational percentage excludes maintenance and unknown time; coverage includes maintenance. Gaps are unknown, not assumed uptime.</p><p class="help">Observations through '+escape(date(result.to))+(result.startedAt?' · Recording began '+escape(date(result.startedAt)):'')+'</p></section>';
+    }
+    async function loadAvailability(id,force=false){
+        const cached=availabilityResults.get(id),month=new Date().toISOString().slice(0,7);
+        if(availabilityRequests.has(id)||!force&&cached&&Date.now()-cached.at<60000&&cached.month===month)return;
+        availabilityRequests.add(id);
+        try{
+            const response=await fetch("/api/services/"+encodeURIComponent(id)+"/availability",{cache:"no-store",signal:AbortSignal.timeout(10000)});
+            if(!response.ok)throw Error("Unavailable");const result=await response.json();if(result.serviceId!==id)throw Error("Unexpected service");
+            availabilityResults.set(id,{data:result,at:Date.now(),month});
+        }catch{availabilityResults.set(id,{error:true,at:Date.now(),month});}
+        finally{availabilityRequests.delete(id);if(selected===id&&$("service-dialog").open)renderDialog();}
     }
     function renderDialog() {
         if (!selected) return;
@@ -141,17 +251,27 @@
         let html = "<p><strong>Reported availability: " + escape(service?.statusText || service?.status || "Status unavailable") + "</strong></p>";
         html += "<p>" + escape(service?.description || card.querySelector(".service-description").textContent) + "</p>";
         if (service?.healthCheck) html += "<p>Automatic check: " + escape(service.healthCheck.checkedAt ? date(service.healthCheck.checkedAt) : "Awaiting results") + "</p>";
+        if(service?.healthCheck?.monitorError)html+="<p>The automatic monitor needs attention. A service outage has not been confirmed by this check.</p>";
+        if(service?.stale)html+="<p>Last known Microsoft status from "+escape(date(service.checkedAt))+". This data is stale.</p>";
         if (card.dataset.source === "microsoft") html += "<p>Microsoft reports service health. Local impact assessments appear on each notice below.</p>";
         if (!latest) html += "<p>Live status could not be loaded.</p>";
+        if(service?.healthCheck)html+="<p>Last successful automatic check: "+escape(service.healthCheck.lastSuccessfulCheckAt?date(service.healthCheck.lastSuccessfulCheckAt):"No successful check recorded since monitoring started")+"</p>";
+        else if(service?.source==="Microsoft")html+="<p>Microsoft report collected: "+escape(date(service.checkedAt))+"</p>";
+        else if(service)html+="<p>Manual status published: "+escape(date(latest.publishedAt))+"</p>";
+        html+=availabilityHtml(selected);
         html += "<h3>Current notices</h3>" + renderItems(latest?.incidents?.filter(i => i.serviceId === selected), "service");
         for (const [type, label] of [["maintenance", "Maintenance"], ["history", "Resolved incidents"]]) {
             const items = latest?.[type]?.filter(i => i.serviceId === selected) || [];
             if (items.length) html += "<h3>" + label + "</h3>" + renderItems(items, type);
         }
         replace("service-dialog-content", html);
+        $("retry-availability")?.addEventListener("click",()=>void loadAvailability(selected,true));
+        if(latest)void loadAvailability(selected);
     }
     function update(data) {
+        const firstLoad=!latest;
         latest = data;
+        renderAffected();
         const announcement = data.announcement;
         $("announcement").hidden = !announcement;
         if (announcement) { $("announcement").className = "announcement " + announcement.level; $("announcement-heading").textContent = announcement.title; $("announcement-text").textContent = announcement.message; }
@@ -172,10 +292,12 @@
             "No incidents are confirmed to affect PTG. Microsoft notices are assessed separately.";
         if (!data.microsoftAvailable) $("impact-summary").textContent += " Microsoft live information is unavailable.";
         applyFilters();
+        if(firstLoad)readServiceLink();
         if ($("service-dialog").open) renderDialog();
     }
     function unavailable() {
         latest = null; applyFilters();
+        $("affected-service-list").replaceChildren();$("affected-summary").textContent="Current affected services could not be checked. Try Refresh status.";$("show-affected-services").hidden=true;
         $("announcement").hidden = true;
         $("service-load-state").hidden = false;
         $("service-load-state").textContent = "Unable to load the service list. Try Refresh status.";
@@ -191,6 +313,8 @@
         document.querySelectorAll("[data-filter]").forEach(b => b.setAttribute("aria-pressed", String(b === button)));
         applyFilters();
     }));
+    $("show-affected-services").addEventListener("click",()=>{document.querySelector('[data-filter="affected"]').click();$("service-search").value="";applyFilters();$("services").scrollIntoView({block:"start",behavior:"smooth"});});
+    window.addEventListener("storage",event=>{if(event.key===favouritesKey||event.key===null){try{favourites=window.PTGDashboard.parseFavourites(localStorage.getItem(favouritesKey));}catch{favourites=new Set();}if(latest)syncServices(latest.services||[]);applyFilters();}});
     $("service-search").addEventListener("input", applyFilters);
     $("reset-filters")?.addEventListener("click", () => {
         filter = "all"; $("service-search").value = "";

@@ -5,17 +5,18 @@ const express=require("express");
 const env={WELCOME_EMAIL_ENABLED:"true",WELCOME_EMAIL_FROM:"status@progressive-technology.co.uk",
 ADMIN_SIGN_IN_URL:"https://status.progressive.technology/admin/#admin-overview",
 AZURE_TENANT_ID:"test",AZURE_CLIENT_ID:"test",AZURE_CLIENT_SECRET:"test"};
-test("welcome email uses the required sender and exact credentials; reports acceptance accurately",async()=>{
+test("welcome email uses the required sender and secure setup link; reports acceptance accurately",async()=>{
  let request;
  const mailer=createWelcomeMailer(env,{credential:{getToken:async()=>({token:"test-token"})},fetch:async(url,options)=>{request={url,...options};return {status:202};}});
  const user={username:"test.user",firstName:"Test",email:"recipient@example.test"};
- assert.equal((await mailer.send(user,"Secret & <literal> password")).status,"accepted");
+ assert.equal((await mailer.send(user,"https://status.progressive.technology/admin/password.html#token=test")).status,"accepted");
  assert.equal(request.url,"https://graph.microsoft.com/v1.0/users/status%40progressive-technology.co.uk/sendMail");
  const data=JSON.parse(request.body);
  assert.equal(data.message.from.emailAddress.address,env.WELCOME_EMAIL_FROM);
  assert.equal(data.message.toRecipients[0].emailAddress.address,user.email);
  assert.match(data.message.body.content,/Username: test.user/);
- assert.ok(data.message.body.content.includes("Password: Secret & <literal> password"));
+ assert.ok(data.message.body.content.includes("Choose your password: https://status.progressive.technology/admin/password.html#token=test"));
+ assert.ok(!data.message.body.content.includes("Password:"));
  assert.ok(data.message.body.content.includes(env.ADMIN_SIGN_IN_URL));
  assert.equal(data.message.body.contentType,"Text");assert.equal(data.saveToSentItems,false);
 });
@@ -35,10 +36,11 @@ test("account invitations are sent once, only after persistence, with visible fa
  let raw="[]",calls=0,failSave=false,failMail=false;
  const storage={read:async()=>raw,write:async(name,value)=>{if(failSave)throw new Error("Storage unavailable");raw=value;}};
  const welcomeMailer={configuration:()=>({ready:true,message:"Ready"}),send:async(user,password)=>{
-  calls++;assert.equal(JSON.parse(raw).some(u=>u.id===user.id),true);assert.equal(password,"long-test-password");
+  calls++;assert.equal(JSON.parse(raw).some(u=>u.id===user.id),true);assert.match(password,/password\.html#token=/);
   assert.ok(!raw.includes(password));
   return failMail?{status:"failed",message:"Email could not be sent."}:{status:"accepted",message:"Accepted for delivery."};
  }};
+ require("./transactional-fixture")(storage);
  const app=express();app.use(express.json());require("../user-auth")(app,{statusFile:"unused",key:"test-key-longer-than-24-characters",storage,welcomeMailer});
  app.use((error,req,res,next)=>res.status(500).json({error:"Save failed"}));
  const server=app.listen(0,"127.0.0.1");await new Promise(r=>server.once("listening",r));t.after(()=>new Promise(r=>server.close(r)));
@@ -69,6 +71,7 @@ test("deactivation and deletion emails contain no passwords",async()=>{
 test("deletion protects admins, revokes sessions and sends notifications only after successful changes",async t=>{
  let raw="[]",failWrite=false;const notices=[];
  const storage={read:async()=>raw,write:async(name,value)=>{if(failWrite)throw new Error("Unavailable");raw=value;}};
+ require("./transactional-fixture")(storage);
  const app=express();app.use(express.json());
  require("../user-auth")(app,{statusFile:"unused",key:"bootstrap-key-at-least-24-characters",storage,welcomeMailer:{
   configuration:()=>({ready:true}),send:async(user,password,event="created")=>{

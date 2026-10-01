@@ -18,7 +18,7 @@ test("individual users persist, enforce permissions and revoke sessions", async 
     t.after(async () => {
         await new Promise(resolve => server.close(resolve));
         for (const file of ["status.json", "users.json"]) await fs.unlink(path.join(dir, file));
-        await fs.rmdir(dir);
+        for(const sidecar of ["audit.json","approvals.json","availability.json"])await fs.unlink(path.join(dir,sidecar)).catch(e=>{if(e.code!=="ENOENT")throw e;});await fs.rmdir(dir);
     });
     const base = "http://127.0.0.1:" + server.address().port + "/api/admin/";
     const send = (route, method = "GET", body, token = key, headers = {}) => fetch(base + route, {
