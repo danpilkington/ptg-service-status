@@ -444,6 +444,7 @@ body.status-page .wrap{width:min(calc(100% - 64px),var(--max));margin-left:auto;
 
 .provider-freshness-warning{padding:1rem;margin:1rem 0;background:#fff5dc;color:#684300;border-left:4px solid #b45309;border-radius:8px;overflow-wrap:anywhere}
 .provider-freshness-warning[hidden]{display:none}
+<<<<<<< HEAD
 
 /* Personal service shortcuts and impact overview. */
 .affected-overview{margin:20px 0;padding:20px;border:1px solid var(--line,#dce4eb);border-radius:16px;background:#fff}
@@ -477,3 +478,5 @@ body.status-page .wrap{width:min(calc(100% - 64px),var(--max));margin-left:auto;
 .affected-overview .section-head p{font-size:12px;line-height:1.4;margin:0}
 .affected-service{padding:12px}.affected-service button{padding:6px 10px}.affected-guidance{margin-bottom:8px}
 @media(min-width:1001px) and (max-height:850px){body.status-page{height:auto;min-height:100dvh;overflow:auto}.status-page main.wrap{flex:none}.status-page .dashboard-grid{flex:none;min-height:420px}.status-page .services{max-height:60vh}}
+=======
+>>>>>>> 24567e62823c1f7663495a6e9b0965307c9f9854
