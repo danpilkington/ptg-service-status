@@ -441,3 +441,6 @@ body.status-page .wrap{width:min(calc(100% - 64px),var(--max));margin-left:auto;
         opacity: 0.35;
     }
 }
+
+.provider-freshness-warning{padding:1rem;margin:1rem 0;background:#fff5dc;color:#684300;border-left:4px solid #b45309;border-radius:8px;overflow-wrap:anywhere}
+.provider-freshness-warning[hidden]{display:none}

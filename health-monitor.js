@@ -95,11 +95,11 @@ async function probeSupabase(config) {
         const params=new URLSearchParams();
         params.set("services",config.services.join(","));
         const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),5000);
-        let response;
+        let response,responseText;
         try {
             response=await fetch(`https://api.supabase.com/v1/projects/${config.projectRef}/health?${params}`,{headers:{Accept:"application/json",Authorization:`Bearer ${token}`},redirect:"manual",signal:controller.signal});
+        responseText=await response.text();
         } finally { clearTimeout(timer); }
-        const responseText=await response.text();
         if(response.status<200||response.status>=300){
             let detail="";try{const errorBody=JSON.parse(responseText);detail=errorBody.message||errorBody.error||errorBody.error_description||"";}catch{}
             return {ok:false,message:"Supabase health API returned HTTP "+response.status+(detail?": "+String(detail).slice(0,300):""),latencyMs:null};
@@ -153,7 +153,14 @@ function redact(data) {
     })};
 }
 
+function classifyResult(result) {
+    if (result.ok || result.kind) return result;
+    const monitorError = /Supabase health API returned HTTP|Supabase health check (failed|timed out)|not configured|outside the allowed|could not be resolved or validated|utility unavailable|certificate issuer|hostname does not match|could not complete|HTTP (401|403|429)|invalid JSON|response exceeds/i.test(result.message || "");
+    return {...result, kind: monitorError ? "monitor-error" : "service-failure"};
+}
 function advance(previous,result,now) {
+    result = classifyResult(result);
+    if (result.kind === "monitor-error") return {...result, failures:0, successes:0, status:"unknown", checkedAt:new Date(now).toISOString()};
     const failures=result.ok?0:(previous?.failures||0)+1;
     const successes=result.ok?(previous?.successes||0)+1:0;
     let status=previous?.status||"unknown";
@@ -162,16 +169,16 @@ function advance(previous,result,now) {
     return {...result,failures,successes,status,checkedAt:new Date(now).toISOString()};
 }
 function createMonitor(statusFile, check=probe, storage=null) {
-    const states=new Map();let running=false,timer;
+    const states=new Map();let running=false,timer; const worker={started:false,lastCompletedAt:null,error:false};
     async function tick() {
         if(running)return;running=true;
         try {
-            const data=JSON.parse(storage ? await storage.read("status") : await fs.readFile(statusFile,"utf8"));
+            const data=JSON.parse(storage ? await storage.read("status") : await fs.readFile(statusFile,"utf8")); worker.error=false;
             const services=data.services||[];
             const jobs=[];
             for(const s of services) {
                 let config;
-                try{config=validate(s.monitor);}catch{states.delete(s.id);continue;}
+                try{config=validate(s.monitor);}catch{states.set(s.id,{...advance(null,{ok:false,kind:"monitor-error",message:"Monitoring configuration is invalid",latencyMs:null},Date.now()),signature:JSON.stringify(s.monitor)});continue;}
                 if(!config||config.paused){states.delete(s.id);continue;}
                 const signature=JSON.stringify(config),old=states.get(s.id);
                 if(old?.signature!==signature)states.delete(s.id);
@@ -183,33 +190,36 @@ function createMonitor(statusFile, check=probe, storage=null) {
             await Promise.all(Array.from({length:Math.min(4,jobs.length)},async()=>{
                 while(cursor<jobs.length){
                     const job=jobs[cursor++];let result;
-                    try{result=await check(job.config.type==="http"?{...job.config,...await require("./monitor-secrets").open(job.config),secret:undefined}:job.config);}catch{result={ok:false,message:"Health check could not complete",latencyMs:null};}
+                    try{result=await check(job.config.type==="http"?{...job.config,...await require("./monitor-secrets").open(job.config),secret:undefined}:job.config);}catch{result={ok:false,kind:"monitor-error",message:"Health check could not complete",latencyMs:null};}
                     states.set(job.id,{...advance(states.get(job.id),result,Date.now()),signature:job.signature});
                 }
             }));
-        } catch(error){console.error("Health monitor could not read its configuration:",error.message);}
-        finally{running=false;}
+        } catch(error){worker.error=true;console.error("Health monitor could not read its configuration:",error.message);}
+        finally{running=false;worker.lastCompletedAt=new Date().toISOString();}
     }
     function result(service) {
         const state=states.get(service.id);
-        if(!state||state.signature!==JSON.stringify(service.monitor))return null;
-        const {signature,...safe}=state;
+        let signature;try{signature=JSON.stringify(validate(service.monitor));}catch{signature=JSON.stringify(service.monitor);}
+        if(!state||state.signature!==signature)return null;
+        const {signature:storedSignature,...safe}=state;
         return {...safe,stale:Date.now()-Date.parse(state.checkedAt)>Math.max(service.monitor.interval*2500,90000)};
     }
     return {
         tick,
-        start(){if(!timer){void tick();timer=setInterval(()=>void tick(),5000);timer.unref();}},
-        stop(){clearInterval(timer);timer=null;},
+        workerHealth(){return {...worker,running};},
+        start(){if(!timer){worker.started=true;void tick();timer=setInterval(()=>void tick(),5000);timer.unref();}},
+        stop(){clearInterval(timer);timer=null;worker.started=false;},
         details(services){return Object.fromEntries(services.map(s=>[s.id,result(s)]));},
         publicServices(services){return services.map(s=>{
             const {monitor,...publicService}=s;
             if(!monitor||monitor.paused)return publicService;
             let valid=true;try{validate(monitor);}catch{valid=false;}
-            const current=valid?result(s):null;
-            const status=current&&!current.stale?current.status:"unknown";
-            return {...publicService,status,statusText:status==="operational"?"Operational":status==="outage"?"Health check failed":"Awaiting health checks",
-                healthCheck:{checkedAt:current?.checkedAt||null,status}};
+            const current=result(s);
+            const status=valid&&current&&!current.stale?current.status:"unknown";
+            const monitorError=!valid||current?.kind==="monitor-error";
+            return {...publicService,status,statusText:monitorError?"Monitor needs attention":current?.stale?"Monitoring data is stale":status==="operational"?"Operational":status==="outage"?"Health check failed":"Awaiting health checks",
+                healthCheck:{checkedAt:current?.checkedAt||null,status,stale:!!current?.stale,monitorError}};
         });}
     };
 }
-module.exports={allowed,validate,probe,probeApi,probeSupabase,supabaseServicesHealthy,redact,advance,createMonitor};
+module.exports={allowed,validate,probe,probeApi,probeSupabase,supabaseServicesHealthy,redact,classifyResult,advance,createMonitor};
