@@ -444,6 +444,16 @@ body.status-page .wrap{width:min(calc(100% - 64px),var(--max));margin-left:auto;
 
 .provider-freshness-warning{padding:1rem;margin:1rem 0;background:#fff5dc;color:#684300;border-left:4px solid #b45309;border-radius:8px;overflow-wrap:anywhere}
 .provider-freshness-warning[hidden]{display:none}
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> e3b2c9fdaa2fb16b19aebfa2aecb10fdcee75923
+>>>>>>> af22431af97badf94adb0f3bfcc244c088331d38
+>>>>>>> dd2fa27ad1873b9629ed4081b875218544cf70ea
 
 /* Personal service shortcuts and impact overview. */
 .affected-overview{margin:20px 0;padding:20px;border:1px solid var(--line,#dce4eb);border-radius:16px;background:#fff}
@@ -477,6 +487,13 @@ body.status-page .wrap{width:min(calc(100% - 64px),var(--max));margin-left:auto;
 .affected-overview .section-head p{font-size:12px;line-height:1.4;margin:0}
 .affected-service{padding:12px}.affected-service button{padding:6px 10px}.affected-guidance{margin-bottom:8px}
 @media(min-width:1001px) and (max-height:850px){body.status-page{height:auto;min-height:100dvh;overflow:auto}.status-page main.wrap{flex:none}.status-page .dashboard-grid{flex:none;min-height:420px}.status-page .services{max-height:60vh}}
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> af22431af97badf94adb0f3bfcc244c088331d38
+>>>>>>> dd2fa27ad1873b9629ed4081b875218544cf70ea
 
 /* Display mode and service sharing */
 .service-share{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0}.service-share input{width:100%;padding:10px;border:1px solid #b6c8db;border-radius:8px;font-size:14px}.service-share span{font-size:14px}
@@ -489,12 +506,17 @@ body.status-page.wallboard-active{height:auto;min-height:100dvh;overflow:auto;ba
 
 body.status-page.wallboard-active #service-grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:16px!important;max-height:none!important;overflow:visible!important}body.status-page.wallboard-active #service-grid .service{width:auto!important;min-width:0!important;min-height:160px!important;padding:20px!important}body.status-page.wallboard-active #service-grid .service h3{font-size:25px!important;line-height:1.25!important;white-space:normal!important}body.status-page.wallboard-active #service-grid .service-description{font-size:16px!important}body.status-page.wallboard-active #service-grid .pill{font-size:19px!important}body.status-page.wallboard-active #service-grid .service[hidden]{display:none!important}
 @media(max-width:1000px){body.status-page.wallboard-active #service-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}@media(max-width:550px){body.status-page.wallboard-active #service-grid{grid-template-columns:1fr!important}}
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> dd2fa27ad1873b9629ed4081b875218544cf70ea
 
 /* Fit as many readable columns as the display allows; paging is measured in JS. */
 body.status-page.wallboard-active #service-grid{grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr))!important}
 #wallboard-controls button[hidden]{display:none!important}
 
 /* Keep availability and actions aligned despite wrapped service copy. */
+<<<<<<< HEAD
 body.status-page.wallboard-active #service-grid .service{align-items:stretch}
 body.status-page.wallboard-active #service-grid .service>.service-content{display:flex;flex-direction:column;flex-wrap:nowrap;align-items:flex-start;flex:1;min-width:0;gap:0}
 body.status-page.wallboard-active #service-grid .service h3{width:100%;flex:none;overflow-wrap:anywhere}
@@ -513,3 +535,20 @@ body.status-page.wallboard-active #service-grid .service .service-actions{displa
 body.status-page.wallboard-active #service-grid .service>.service-content{display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;gap:14px;width:100%}
 body.status-page.wallboard-active #service-grid .service h3{margin:0}
 body.status-page.wallboard-active #service-grid .service .pill{margin-top:auto}
+=======
+body.status-page #service-grid .service{align-items:stretch}
+body.status-page #service-grid .service>.service-content{display:flex;flex-direction:column;flex-wrap:nowrap;align-items:flex-start;flex:1;min-width:0;gap:0}
+body.status-page #service-grid .service h3{width:100%;flex:none;overflow-wrap:anywhere}
+body.status-page #service-grid .service .service-description{flex:1 0 auto;min-height:2.8em;margin:4px 0 10px}
+body.status-page #service-grid .service .pill{flex:0 0 auto;box-sizing:border-box;min-height:3.8em;max-width:100%;width:fit-content;line-height:1.35;white-space:normal;overflow-wrap:anywhere;gap:7px}
+body.status-page #service-grid .service .pill:before{flex:0 0 8px}
+body.status-page #service-grid .service .service-actions{flex:none;min-height:26px;margin-top:8px}
+body.status-page.wallboard-active #service-grid .service{max-width:none!important}
+body.status-page.wallboard-active #service-grid .service .pill{min-height:3.8em;padding:8px 12px}
+=======
+=======
+=======
+>>>>>>> 24567e62823c1f7663495a6e9b0965307c9f9854
+>>>>>>> e3b2c9fdaa2fb16b19aebfa2aecb10fdcee75923
+>>>>>>> af22431af97badf94adb0f3bfcc244c088331d38
+>>>>>>> dd2fa27ad1873b9629ed4081b875218544cf70ea
