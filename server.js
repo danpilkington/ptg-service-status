@@ -86,7 +86,11 @@ app.locals.storage = storage;
 require("./admin-api")(app, { statusFile: STATUS_FILE, monitor: healthMonitor, storage, availability, integrationHealth:async()=>{
     const status=JSON.parse(await storage.read("status"));
     const auditRaw=await storage.read("audit")||"[]";
+<<<<<<< HEAD
     return {checkedAt:new Date().toISOString(),integrations:{...integrations.snapshot(),backup:await require("./ops/backup-health").backupHealth(process.env.SQL_BACKUP_HEALTH_FILE)},monitoring:healthMonitor.workerHealth(),automation:{...automation},checks:healthMonitor.details(status.services||[]),retention:{auditCount:JSON.parse(auditRaw).length,auditBytes:Buffer.byteLength(auditRaw),incidents:(status.incidents||[]).length,assessments:(status.microsoftAssessments||[]).length,incidentLimit:500,availabilityDays:400}};
+=======
+    return {checkedAt:new Date().toISOString(),integrations:integrations.snapshot(),monitoring:healthMonitor.workerHealth(),automation:{...automation},checks:healthMonitor.details(status.services||[]),retention:{auditCount:JSON.parse(auditRaw).length,auditBytes:Buffer.byteLength(auditRaw),incidents:(status.incidents||[]).length,assessments:(status.microsoftAssessments||[]).length,incidentLimit:500,availabilityDays:400}};
+>>>>>>> ccc816cc7791549be2807bcc574140755fd05f7a
 } });
 const publicFiles = new Set(["/", "/index.html", "/info.html", "/style.css", "/app.js", "/public-ui.js", "/admin/", "/admin/index.html", "/admin/style.css", "/admin/app.js", "/admin/password.html", "/admin/password.js"]);
 app.get(/^\/admin$/, (req, res) => res.redirect(302, "/admin/"));

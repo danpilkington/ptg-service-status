@@ -14,8 +14,11 @@ availability.json
 *.transaction
 microsoft-cache.json
 backups/
+<<<<<<< HEAD
 
 *.ptgbackup
 recovery-staging/
 health-state.json
 sql-backup-health.json
+=======
+>>>>>>> ccc816cc7791549be2807bcc574140755fd05f7a
