@@ -36,3 +36,48 @@ the password hash; request contents and mail provider bodies are not logged. No 
 copy is saved in the sender's Sent Items. Source and mail configuration are server-only.
 
 Reference: https://learn.microsoft.com/en-us/graph/api/user-sendmail
+
+## Secure password links, approvals, audit and availability
+
+This update replaces passwords in welcome emails with one-use setup links (valid for
+24 hours). Existing passwords keep working. New users created through the admin form
+choose their own password; administrators no longer enter or email it. The sign-in
+screen includes Forgot your password. Reset links expire after one hour, invalidate
+older links when reissued, and sign out existing sessions when used. Disabled/deleted
+accounts cannot use password links. Only a hash of the link token is stored. Tokens
+remain in the email URL fragment and are removed from the browser address on opening.
+
+Use Send password link on an enabled account to resend a setup/reset link after a
+mail failure. Password-change links need the existing Microsoft 365 mail setup.
+
+Editors now submit all status changes for approval. Administrators can still publish
+directly. Approvals shows submitted details beside the currently published content.
+Only a different administrator can approve/reject a request. Approval publishes the
+saved validated submission, not arbitrary data supplied with the approval request.
+If published content has changed, the request must be rejected and resubmitted against
+the latest version. Requests are stored server-side; changing tabs does not lose them.
+
+Audit history records successful account changes, password-link requests/completions,
+publishing, submissions and review decisions with time, actor and target. It is available
+only to administrators, paginated 50 records at a time. Passwords, hashes, reset tokens
+and monitoring credentials are excluded. Mutation and audit records commit together.
+This is an application audit history, not tamper-proof evidence against database admins.
+
+Availability reports collect observations every minute, including without visitors.
+They cover PTG and Microsoft services as reported by the public status endpoint.
+Monthly UTC reports show fully operational percentage, outage/maintenance/unknown time,
+coverage and observed outage starts. Fully operational percentage is operational time
+divided by operational + advisory + degraded + outage time. Unknown and maintenance
+are excluded from that denominator. A last observation is trusted for at most two minutes;
+longer gaps and time before recording began remain unknown. Reports are estimates from
+observed status, not synthetic historical uptime. Daily totals are retained for 400 days.
+CSV exports include the individual status durations. Recording starts on server restart.
+
+Deployment: restart the website under its existing PROGRESSIVE\administrator account.
+Startup extends the SQL Documents name constraint for audit, approvals and availability,
+without changing current status or user records. If the runtime account cannot alter
+the schema, run node database-setup.js upgrade as a database administrator first.
+Do not rerun the old file migration on a live SQL database. File-backed installations
+create private audit.json, approvals.json and availability.json sidecars; multi-document
+writes use a recovery journal to complete interrupted transactions before further reads.
+Back up the entire database (or all file-sidecar records for file installations).

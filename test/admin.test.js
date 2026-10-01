@@ -1,4 +1,6 @@
 "use strict";
+process.env.TEAMS_WEBHOOK_URL="";
+process.env.WELCOME_EMAIL_ENABLED="false";
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs/promises");
@@ -15,7 +17,7 @@ test("publishing validates, authenticates, persists and detects conflicts", asyn
     const app = express(); app.use(express.json()); attach(app,{statusFile:file,key});
     const server = app.listen(0,"127.0.0.1");
     await new Promise(resolve=>server.once("listening",resolve));
-    t.after(async()=>{await new Promise(resolve=>server.close(resolve)); await fs.unlink(file); await fs.rmdir(dir);});
+    t.after(async()=>{await new Promise(resolve=>server.close(resolve)); await fs.unlink(file); for(const sidecar of ["audit.json","approvals.json","availability.json"])await fs.unlink(path.join(dir,sidecar)).catch(e=>{if(e.code!=="ENOENT")throw e;});await fs.rmdir(dir);});
     const url = "http://127.0.0.1:" + server.address().port + "/api/admin/status";
     const send=(method="GET",body,extra={})=>fetch(url,{method,headers:{Authorization:"Bearer "+key,"Content-Type":"application/json",...extra},...(body?{body:JSON.stringify(body)}:{})});
     assert.equal((await fetch(url)).status,401);
@@ -90,7 +92,7 @@ test("public pages work, private files are blocked, and local status reaches API
     const fixture = path.join(isolated, "status.json");
     await fs.writeFile(fixture, JSON.stringify({ services: [{id:"vpn", name:"VPN", status:"operational"}], incidents:[], maintenance:[] }));
     process.env.STATUS_FILE=fixture; process.env.USERS_FILE=path.join(isolated,"users.json"); process.env.STORAGE_DRIVER="file";
-    t.after(async()=>{ await fs.unlink(fixture); await fs.rmdir(isolated); delete process.env.USERS_FILE; });
+    t.after(async()=>{ await fs.unlink(fixture); for(const sidecar of ["audit.json","approvals.json","availability.json"])await fs.unlink(path.join(isolated,sidecar)).catch(e=>{if(e.code!=="ENOENT")throw e;});await fs.rmdir(isolated); delete process.env.USERS_FILE; });
     const app=require("../server");
     const server=app.listen(0,"127.0.0.1");
     await new Promise(resolve=>server.once("listening",resolve));
@@ -114,7 +116,7 @@ test("service creation, edits and removal preserve linked history", async t => {
     const app=express(); app.use(express.json()); attach(app,{statusFile:file,key});
     const server=app.listen(0,"127.0.0.1");
     await new Promise(resolve=>server.once("listening",resolve));
-    t.after(async()=>{await new Promise(resolve=>server.close(resolve));await fs.unlink(file);await fs.rmdir(dir);});
+    t.after(async()=>{await new Promise(resolve=>server.close(resolve));await fs.unlink(file);for(const sidecar of ["audit.json","approvals.json","availability.json"])await fs.unlink(path.join(dir,sidecar)).catch(e=>{if(e.code!=="ENOENT")throw e;});await fs.rmdir(dir);});
     const url="http://127.0.0.1:"+server.address().port+"/api/admin/status";
     let snapshot=await (await fetch(url,{headers:{Authorization:"Bearer "+key}})).json();
     const put=body=>fetch(url,{method:"PUT",headers:{Authorization:"Bearer "+key,"Content-Type":"application/json"},body:JSON.stringify(body)});

@@ -6,6 +6,7 @@
         if (!tabs.length) return;
 
         const activate = id => {
+            if(tabs.find(tab=>tab.dataset.adminTab===id)?.hidden)id="admin-overview";
             tabs.forEach(tab => {
                 const active = tab.dataset.adminTab === id;
                 tab.setAttribute("aria-selected", String(active));
@@ -22,8 +23,9 @@
                 if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
                 event.preventDefault();
                 const next = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : (index + (event.key === "ArrowDown" ? 1 : -1) + tabs.length) % tabs.length;
-                tabs[next].focus();
-                activate(tabs[next].dataset.adminTab);
+                const visible=tabs.filter(tab=>!tab.hidden),position=visible.indexOf(tab);
+                const selected=event.key==="Home"?visible[0]:event.key==="End"?visible.at(-1):visible[(position+(event.key==="ArrowDown"?1:-1)+visible.length)%visible.length];
+                selected.focus(); activate(selected.dataset.adminTab);
             });
         });
 
@@ -304,7 +306,7 @@
         });
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || "Unable to connect to the publishing service.");
-        if (method === "GET" && result.editorVersion !== 7) throw new Error("The publishing server needs a restart to enable this updated admin page. Restart the Node server, then connect again.");
+        if (method === "GET" && result.editorVersion !== 8) throw new Error("The publishing server needs a restart to enable this updated admin page. Restart the Node server, then connect again.");
         return result;
     }
     function timeline(item) {
@@ -564,6 +566,7 @@
         feedback("Published status loaded. Changes stay in this workspace until you publish.");
         await loadMicrosoft();
         await loadHealthResults();
+        await loadIntegrations();
         offerRecovery();
     }
     let editingUser = null, signedInUserId = null;
@@ -577,7 +580,7 @@
         return result;
     }
     function clearUserForm() {
-        editingUser = null; $("user-form").reset(); $("user-email").required = true; $("user-password").required = true;
+        editingUser = null; $("user-form").reset(); $("user-email").required = true; $("user-password").required = false;
         $("user-editor-title").textContent = "Create user";
     }
     async function loadUsers() {
@@ -609,6 +612,10 @@
                 });
                 remove.classList.add("delete-user"); row.append(remove);
             }
+            if(user.active&&user.email)row.append(button("Send password link",()=>run(async()=>{
+                const result=await accountRequest("users/"+encodeURIComponent(user.id)+"/password-link","POST",{});
+                $("users-feedback").textContent=result.accountEmail.message;
+            })));
             $("users-list").append(row);
         }
         if (!users.length) $("users-list").append(text("p", "No individual accounts yet. Create an administrator to get started."));
@@ -617,8 +624,14 @@
         const { user } = await accountRequest("me");
         signedInUserId = user.id;
         const admin = user.role === "admin";
+        accountRole=user.role;
+        await loadIntegrations();
+        $("audit-nav").hidden=!admin;
+        $("publish").textContent=admin?"Publish changes":"Submit for approval";
         $("manage-users").hidden = !admin; $("users-nav").hidden = !admin;
         if (admin) await loadUsers();
+        const selectedTab=document.querySelector("[data-admin-tab][aria-selected=true]");
+        (selectedTab&&!selectedTab.hidden?selectedTab:document.querySelector("[data-admin-tab=admin-overview]")).click();
     }
     $("login-form").addEventListener("submit", event => {
         event.preventDefault();
@@ -724,7 +737,7 @@
             clearRecovery(); credentialEdits.clear();
             data = result.data; revision = result.revision; render();
             await loadHealthResults();
-            feedback("Changes published successfully. The main status page now uses this update.");
+            feedback(result.pending ? "Changes submitted for approval. The public page is unchanged. Check Approvals for the decision." : "Changes published successfully. The main status page now uses this update.");
         });
     });
     $("reload").addEventListener("click", () => {
@@ -741,6 +754,7 @@
         $("service-api-key").value="";$("service-api-auth").value="";
         accountRequest("logout", "POST").catch(() => {}); clearUserForm(); $("users-list").replaceChildren(); $("users-feedback").textContent = ""; $("login-password").value = "";
         key = ""; data = null; baseline = null; revision = ""; dirty = false; publicIssues = []; changedForms.clear();
+        document.querySelector("[data-integration-panel]").hidden=true; $("integration-health").replaceChildren();
         $("editor").hidden = true; $("connection").hidden = false; $("admin-key").value = "";
         $("published").textContent = "Connect to load"; $("published").removeAttribute("datetime");
         feedback("Signed out."); $("login-username").focus();
@@ -892,7 +906,45 @@
             document.querySelectorAll("[data-health-service]").forEach(el=>{if(data?.services.find(s=>s.id===el.dataset.healthService)?.monitor)el.textContent="Monitoring results unavailable; reconnect or check the server.";});
         }
     }
-    window.setInterval(()=>{if(!busy)void loadHealthResults();},30000);
+    async function loadIntegrations(){
+        const panel=document.querySelector("[data-integration-panel]");
+        if(!panel)return;
+        panel.hidden=!key||accountRole!=="admin";
+        if(panel.hidden)return;
+        const requestedKey=key;
+        $("integration-feedback").textContent="Checking integration health…";
+        try{
+            const response=await fetch("/api/admin/integrations",{headers:{Authorization:"Bearer "+key},cache:"no-store",signal:AbortSignal.timeout(10000)});
+            if(!response.ok)throw new Error("Unavailable");
+            const result=await response.json();
+            if(!key||key!==requestedKey||accountRole!=="admin")return;
+            const grid=$("integration-health");grid.replaceChildren();
+            const names={microsoft:"Microsoft Graph",freshservice:"Freshservice",teams:"Microsoft Teams",availability:"Availability recording"};
+            for(const [id,state] of Object.entries(result.integrations)){
+                const card=text("article","","integration-item");card.dataset.state=state.state;
+                card.append(text("h4",names[id]||id),text("p",state.state==="healthy"?"Healthy":state.state==="disabled"?"Not configured":state.state==="waiting"?"Awaiting first check":state.state==="stale"?"Checks overdue":"Needs attention"));
+                card.append(text("p","Last attempt: "+format(state.lastAttemptAt),"help"),text("p","Last success: "+format(state.lastSuccessAt),"help"));
+                if(["teams","freshservice"].includes(id))card.append(text("p","Last event: "+format(state.lastEventAt),"help"));
+                if(state.failures)card.append(text("p",state.failures+" consecutive failed attempts","help"));
+                if(state.message)card.append(text("p",state.message));grid.append(card);
+            }
+            const checks=Object.values(result.checks||{}).filter(Boolean),errors=checks.filter(c=>c.kind==="monitor-error").length,stale=checks.filter(c=>c.stale).length;
+            for(const [name,worker,limit] of [["Health checks",result.monitoring,90000],["Background status refresh",result.automation,180000]]){
+                const card=text("article","","integration-item"),overdue=!worker.lastCompletedAt||Date.now()-Date.parse(worker.lastCompletedAt)>limit;
+                card.dataset.state=worker.error||overdue?"error":"healthy";
+                card.append(text("h4",name),text("p",worker.error?"Needs attention":overdue?"Not running or overdue":"Healthy"),text("p","Last cycle: "+format(worker.lastCompletedAt),"help"));
+                if(name==="Health checks")card.append(text("p",errors+" monitor errors · "+stale+" stale results","help"));grid.append(card);
+            }
+            const r=result.retention;
+            $("integration-capacity").textContent="Retention: "+r.auditCount+" audit entries ("+(r.auditBytes/1024/1024).toFixed(2)+" MB) · "+r.incidents+"/"+r.incidentLimit+" incidents · "+r.assessments+"/500 Microsoft assessments · "+r.availabilityDays+" days of availability."+(r.incidents>=400||r.assessments>=400?" Capacity review needed: archive verified history before reaching the limit.":"");
+            $("integration-feedback").textContent="Updated "+format(result.checkedAt);
+        }catch{
+            $("integration-health").replaceChildren();$("integration-capacity").textContent="";
+            $("integration-feedback").textContent="Integration health could not be loaded. Previous results are no longer shown; check your connection or sign in again.";
+        }
+    }
+    $("refresh-integrations")?.addEventListener("click",()=>void loadIntegrations());
+    window.setInterval(()=>{if(!busy){void loadHealthResults();void loadIntegrations();}},30000);
 
     function renderAnnouncement() {
         const a = data.announcement;
@@ -983,6 +1035,87 @@
         persistDraft();
         if (hasUnsaved()) { event.preventDefault(); event.returnValue = ""; }
     });
+    let accountRole = "editor", auditOffset = 0, latestReport = null;
+    $("report-month").value = new Date().toISOString().slice(0,7);
+    $("password-request-form").addEventListener("submit",async event=>{
+        event.preventDefault();
+        const submit=event.target.querySelector("button");submit.disabled=true;
+        try{
+            const result=await accountRequest("password/request","POST",{username:$("reset-username").value});
+            $("reset-feedback").textContent=result.message;
+        }catch(error){$("reset-feedback").textContent=error.message;}finally{submit.disabled=false;}
+    });
+    async function loadApprovals(){
+        const result=await accountRequest("approvals");$("approvals-list").replaceChildren();
+        for(const item of result.items){
+            const card=text("article","","review-request");
+            card.append(text("h3",item.author.name+" · "+item.state),text("p",format(item.createdAt)));
+            if(item.reason)card.append(text("p","Review note: "+item.reason));
+            if(item.data){
+                for(const field of ["services","incidents","maintenance","announcement","microsoftAssessments"]){
+                    if(JSON.stringify(item.data[field])===JSON.stringify(result.current[field]))continue;
+                    const detail=document.createElement("details");detail.append(text("summary","Review "+field));
+                    detail.append(text("h4","Currently published"),text("pre",JSON.stringify(result.current[field]??null,null,2)));
+                    detail.append(text("h4","Submitted changes"),text("pre",JSON.stringify(item.data[field]??null,null,2)));card.append(detail);
+                }
+            }
+            if(item.state==="pending"&&accountRole==="admin"&&item.author.id!==signedInUserId){
+                for(const decision of ["approve","reject"])card.append(button(decision==="approve"?"Approve and publish":"Reject",()=>{
+                    const reason=prompt(decision==="approve"?"Approve these changes and publish them now? Optional review note:":"Reason for rejecting this request:");
+                    if(reason===null)return;
+                    run(async()=>{
+                        await accountRequest("approvals/"+encodeURIComponent(item.id)+"/"+decision,"POST",{reason});
+                        await loadApprovals();
+                        feedback(decision==="approve"?"Approved and published. Reload the workspace before making further changes.":"Request rejected.");
+                    });
+                }));
+            }
+            $("approvals-list").append(card);
+        }
+        if(!result.items.length)$("approvals-list").append(text("p","No approval requests yet."));
+    }
+    async function loadAudit(){
+        const result=await accountRequest("audit?offset="+auditOffset);$("audit-list").replaceChildren();
+        for(const entry of result.entries){
+            const row=text("article","","audit-entry");
+            row.append(text("strong",entry.action+" · "+entry.target),text("p",format(entry.at)+" · "+entry.actor.name));
+            if(entry.details)row.append(text("p",entry.details));$("audit-list").append(row);
+        }
+        $("audit-page").textContent=result.total?String(result.offset+1)+"–"+Math.min(result.total,result.offset+50)+" of "+result.total:"No recorded changes yet.";
+        $("audit-newer").dataset.available=String(auditOffset>0);
+        $("audit-older").dataset.available=String(auditOffset+50<result.total);
+    }
+    async function loadReport(){
+        const result=await accountRequest("reports?month="+encodeURIComponent($("report-month").value));latestReport=result;
+        $("report-summary").textContent=result.startedAt?"Recording since "+format(result.startedAt)+". Unknown time includes periods without reliable observations.":"No observations recorded yet.";
+        const table=document.createElement("table"),thead=document.createElement("thead"),head=document.createElement("tr");
+        for(const label of ["Service","Fully operational","Outage time","Maintenance","Unknown","Coverage","Outages observed"])head.append(text("th",label));
+        thead.append(head);table.append(thead);const body=document.createElement("tbody");
+        const duration=seconds=>((seconds||0)/3600).toFixed(2)+" h";
+        for(const row of result.rows){
+            const tr=document.createElement("tr");
+            for(const value of [row.name,row.operationalPercent===null?"No data":row.operationalPercent.toFixed(2)+"%",duration(row.outage),duration(row.maintenance),duration(row.unknown),row.coverage.toFixed(1)+"%",row.outageCount||0])tr.append(text("td",String(value)));
+            body.append(tr);
+        }
+        table.append(body);$("report-table").replaceChildren(table);$("export-report").disabled=false;
+    }
+    $("refresh-approvals").addEventListener("click",()=>run(loadApprovals));
+    $("refresh-audit").addEventListener("click",()=>{auditOffset=0;run(loadAudit);});
+    $("audit-newer").addEventListener("click",()=>{if(auditOffset){auditOffset=Math.max(0,auditOffset-50);run(loadAudit);}});
+    $("audit-older").addEventListener("click",()=>{if($("audit-older").dataset.available==="true"){auditOffset+=50;run(loadAudit);}});
+    $("load-report").addEventListener("click",()=>run(loadReport));
+    $("export-report").addEventListener("click",()=>{
+        if(!latestReport)return;
+        const quote=value=>'"'+String(value??"").replace(/^[=+@\-\t\r]/,"'$&").replace(/"/g,'""')+'"';
+        const rows=[["Month","Service","Fully operational %","Operational seconds","Degraded seconds","Advisory seconds","Outage seconds","Maintenance seconds","Unknown seconds","Coverage %","Outages observed"],
+            ...latestReport.rows.map(r=>[latestReport.month,r.name,r.operationalPercent,r.operational||0,r.degraded||0,r.advisory||0,r.outage||0,r.maintenance||0,r.unknown,r.coverage,r.outageCount||0])];
+        const url=URL.createObjectURL(new Blob([rows.map(r=>r.map(quote).join(",")).join("\r\n")],{type:"text/csv;charset=utf-8"}));
+        const a=document.createElement("a");a.href=url;a.download="ptg-availability-"+latestReport.month+".csv";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    });
+    for(const [id,loader] of [["manage-approvals",loadApprovals],["audit-history",loadAudit],["availability-reports",loadReport]]){
+        document.querySelector('[data-admin-tab="'+id+'"]').addEventListener("click",()=>{if(key)run(loader);});
+    }
 })();
+
 
 

@@ -1,4 +1,6 @@
 "use strict";
+process.env.TEAMS_WEBHOOK_URL="";
+process.env.WELCOME_EMAIL_ENABLED="false";
 const {test}=require("node:test");
 const assert=require("node:assert/strict");
 const {applyMaintenance,activeAnnouncement}=require("../dashboard-model");
@@ -25,7 +27,7 @@ test("publishing validates and exposes groups, announcements and automatic windo
  Object.assign(process.env,{STORAGE_DRIVER:"file",STATUS_FILE:file,ADMIN_API_KEY:"dashboard-test-key-at-least-24",AZURE_TENANT_ID:"",AZURE_CLIENT_ID:"",AZURE_CLIENT_SECRET:"",FRESHSERVICE_DOMAIN:"",FRESHSERVICE_API_KEY:"",FRESHSERVICE_REQUESTER_EMAIL:""});
  const server=require("../server").listen(0,"127.0.0.1");
  await new Promise(r=>server.once("listening",r));
- t.after(async()=>{await new Promise(r=>server.close(r));await fs.unlink(file);await fs.rmdir(dir);});
+ t.after(async()=>{await new Promise(r=>server.close(r));await fs.unlink(file);for(const sidecar of ["audit.json","approvals.json","availability.json"])await fs.unlink(path.join(dir,sidecar)).catch(e=>{if(e.code!=="ENOENT")throw e;});await fs.rmdir(dir);});
  const base="http://127.0.0.1:"+server.address().port;
  const headers={Authorization:"Bearer "+process.env.ADMIN_API_KEY,"Content-Type":"application/json"};
  let snapshot=await (await fetch(base+"/api/admin/status",{headers})).json();

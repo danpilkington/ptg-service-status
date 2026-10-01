@@ -242,6 +242,11 @@
       "recoveryNoteAdded": true,
       "recoveryStatus": 11,
       "recoveryCompletedAt": "2026-09-28T15:25:52.402Z"
+    },
+    "PTG:teamviewer-453dccce": {
+      "active": false,
+      "status": "operational",
+      "recoveredAt": "2026-10-01T07:24:40.178Z"
     }
   }
 }

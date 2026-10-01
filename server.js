@@ -62,13 +62,33 @@ app.use(express.json({ limit: "2mb" }));
 
 
 const storage = require("./storage").createStorage({ statusFile: STATUS_FILE });
+const availability = require("./availability").createAvailability(storage);
 const healthMonitor = require("./health-monitor").createMonitor(STATUS_FILE, undefined, storage);
 const freshserviceNotifier = require("./freshservice").createFreshserviceNotifier();
 const teamsNotifier = require("./teams-notifier").createTeamsNotifier();
 let statusAutomationTimer;
+const { createIntegrationHealth, createMicrosoftCache, readiness } = require("./integration-health");
+const integrations = createIntegrationHealth();
+for (const [id, enabled] of Object.entries({microsoft:!!credential, freshservice:freshserviceNotifier.enabled, teams:teamsNotifier.enabled, availability:true})) integrations.configure(id, enabled);
+const automation = {started:false,lastCompletedAt:null,error:false,running:false};
+const microsoftCache = createMicrosoftCache({
+    health:integrations,
+    file:require.main === module ? process.env.MICROSOFT_CACHE_FILE || path.join(__dirname,"microsoft-cache.json") : null,
+    load:async()=>{
+        const [health,issues]=await Promise.all([getMicrosoftHealthOverviews(),getMicrosoftIssues()]);
+        return {services:createMicrosoftServices(health),...splitMicrosoftIssues(issues)};
+    }
+});
+app.locals.integrations = integrations;
+app.locals.monitor = healthMonitor;
+app.locals.automation = automation;
 app.locals.storage = storage;
-require("./admin-api")(app, { statusFile: STATUS_FILE, monitor: healthMonitor, storage });
-const publicFiles = new Set(["/", "/index.html", "/info.html", "/style.css", "/app.js", "/public-ui.js", "/admin/", "/admin/index.html", "/admin/style.css", "/admin/app.js"]);
+require("./admin-api")(app, { statusFile: STATUS_FILE, monitor: healthMonitor, storage, availability, integrationHealth:async()=>{
+    const status=JSON.parse(await storage.read("status"));
+    const auditRaw=await storage.read("audit")||"[]";
+    return {checkedAt:new Date().toISOString(),integrations:integrations.snapshot(),monitoring:healthMonitor.workerHealth(),automation:{...automation},checks:healthMonitor.details(status.services||[]),retention:{auditCount:JSON.parse(auditRaw).length,auditBytes:Buffer.byteLength(auditRaw),incidents:(status.incidents||[]).length,assessments:(status.microsoftAssessments||[]).length,incidentLimit:500,availabilityDays:400}};
+} });
+const publicFiles = new Set(["/", "/index.html", "/info.html", "/style.css", "/app.js", "/public-ui.js", "/admin/", "/admin/index.html", "/admin/style.css", "/admin/app.js", "/admin/password.html", "/admin/password.js"]);
 app.get(/^\/admin$/, (req, res) => res.redirect(302, "/admin/"));
 app.use((req, res, next) => {
     if (!["GET", "HEAD"].includes(req.method) || !publicFiles.has(req.path)) return next();
@@ -222,14 +242,14 @@ async function readLocalStatus() {
     };
 }
 
-async function getGraphAccessToken() {
+async function getGraphAccessToken(abortSignal) {
     if (!credential) {
         throw new Error(
             "Microsoft Graph credentials are not configured."
         );
     }
 
-    const token = await credential.getToken(GRAPH_SCOPE);
+    const token = await credential.getToken(GRAPH_SCOPE, {abortSignal});
 
     if (!token?.token) {
         throw new Error(
@@ -241,7 +261,8 @@ async function getGraphAccessToken() {
 }
 
 async function graphGet(relativeUrl) {
-    const accessToken = await getGraphAccessToken();
+    const abortSignal = AbortSignal.timeout(12000);
+    const accessToken = await getGraphAccessToken(abortSignal);
 
     const response = await fetch(
         `${GRAPH_BASE_URL}${relativeUrl}`,
@@ -250,7 +271,7 @@ async function graphGet(relativeUrl) {
                 "Authorization": `Bearer ${accessToken}`,
                 "Accept": "application/json"
             },
-            signal: AbortSignal.timeout(12000)
+            signal: abortSignal
         }
     );
 
@@ -470,44 +491,12 @@ app.get("/api/status", async (request, response) => {
         });
     }
 
-    let microsoftServices;
-    let microsoftIncidents = [];
-    let microsoftMaintenance = [];
-    let microsoftAvailable = false;
-
-    try {
-        const [
-            healthOverviews,
-            microsoftIssues
-        ] = await Promise.all([
-            getMicrosoftHealthOverviews(),
-            getMicrosoftIssues()
-        ]);
-
-        microsoftServices =
-            createMicrosoftServices(healthOverviews);
-
-        const splitIssues =
-            splitMicrosoftIssues(microsoftIssues);
-
-        microsoftIncidents = splitIssues.incidents;
-        microsoftMaintenance = splitIssues.maintenance;
-        microsoftAvailable = true;
-    } catch (error) {
-        console.error(
-            "Unable to retrieve Microsoft service health:",
-            error.message
-        );
-
-        microsoftServices =
-            microsoftServiceDefinitions.map(definition => ({
-                id: definition.id,
-                serviceName: definition.displayName,
-                status: "unknown",
-                statusText: "Status unavailable",
-                source: "Microsoft"
-            }));
-    }
+    const microsoft = await microsoftCache.get();
+    const microsoftAvailable = microsoft.available;
+    const microsoftServices = microsoft.data ? microsoft.data.services.map(service=>({...service,stale:microsoft.stale,checkedAt:microsoft.checkedAt,statusText:service.statusText+(microsoft.stale?" (last known)":"")})) :
+        microsoftServiceDefinitions.map(definition=>({id:definition.id,serviceName:definition.displayName,status:"unknown",statusText:"Status unavailable",source:"Microsoft"}));
+    const microsoftIncidents = microsoft.data?.incidents || [];
+    const microsoftMaintenance = microsoft.data?.maintenance || [];
 
     const { applyMaintenance, activeAnnouncement } = require("./dashboard-model");
     const now = Date.now();
@@ -522,14 +511,12 @@ app.get("/api/status", async (request, response) => {
     ];
 
     const uniqueServices = [...new Map(services.map(service => [service.id, service])).values()];
-    void freshserviceNotifier.reconcile(uniqueServices).then(result => {
-        for (const ticket of result.created) console.log(`Freshservice ticket ${ticket.ticketId} created for service ${ticket.serviceId}.`);
-        for (const ticket of result.recovered || []) console.log(`Freshservice ticket ${ticket.ticketId} moved to Awaiting Verification after service ${ticket.serviceId} recovered.`);
-    }).catch(error => console.error("Freshservice ticket automation failed:", error.message));
-    void teamsNotifier.reconcile(uniqueServices).then(result => {
-        for (const alert of result.notified) console.log(`Microsoft Teams alert posted for service ${alert.serviceId}.`);
-        for (const recovery of result.recovered || []) console.log(`Microsoft Teams recovery posted for service ${recovery.serviceId}.`);
-    }).catch(error => console.error("Microsoft Teams notification automation failed:", error.message));
+    // Retained provider data is display-only: do not count it as a fresh observation or send alerts.
+    const observedServices = uniqueServices.map(service=>service.stale?{...service,status:"unknown"}:service);
+    const actionableServices = observedServices;
+    await integrations.run("availability",()=>availability.record(observedServices),"Availability recording failed. Check storage access.").catch(()=>{});
+    void integrations.run("freshservice",()=>freshserviceNotifier.reconcile(actionableServices),"Freshservice reconciliation failed. Check credentials, connectivity and state-file access.",result=>(result?.created?.length||0)+(result?.recovered?.length||0)).catch(()=>{});
+    void integrations.run("teams",()=>teamsNotifier.reconcile(actionableServices),"Teams reconciliation failed. Check webhook connectivity and state-file access.",result=>(result?.notified?.length||0)+(result?.recovered?.length||0)).catch(()=>{});
     const assessedMicrosoftIncidents = applyAssessments(microsoftIncidents, localStatus.microsoftAssessments);
     const localIncidents = localStatus.incidents.map(normaliseIncident);
     const responseBody = {
@@ -537,7 +524,9 @@ app.get("/api/status", async (request, response) => {
         publishedAt: localStatus.publishedAt,
         announcement: activeAnnouncement(localStatus.announcement, now),
         microsoftAvailable,
-        overall: createOverall(uniqueServices),
+        microsoftStale:microsoft.stale,
+        microsoftCheckedAt:microsoft.checkedAt,
+        overall: createOverall(observedServices),
         services: uniqueServices,
         incidents: [
             ...assessedMicrosoftIncidents,
@@ -554,11 +543,12 @@ app.get("/api/status", async (request, response) => {
     response.json(responseBody);
 });
 
-app.get("/api/health", (request, response) => {
-    response.json({
-        status: "ok",
-        checkedAt: new Date().toISOString()
-    });
+app.get("/api/health", (request,response)=>{
+    response.set("Cache-Control","no-store").json({status:"ok",checkedAt:new Date().toISOString()});
+});
+app.get("/api/ready", async(request,response)=>{
+    const result=await readiness({storage,monitor:healthMonitor,automation});
+    response.set("Cache-Control","no-store").status(result.status==="ready"?200:503).json({...result,checkedAt:new Date().toISOString()});
 });
 
 app.use((request, response) => {
@@ -582,16 +572,23 @@ app.use((error, request, response, next) => {
 if (require.main === module) {
     (async () => {
         // Fail before listening if configured SQL storage is unavailable; never fall back to old files.
+        await storage.upgrade();
         await storage.read("status");
         await storage.read("users");
         const server = app.listen(PORT, HOST, () => {
             healthMonitor.start();
             console.log("PTG Status Page running at http://" + HOST + ":" + PORT + " (" + storage.kind + " storage)");
-            if (freshserviceNotifier.enabled || teamsNotifier.enabled) {
+            {
                 const internalHost = HOST === "0.0.0.0" ? "127.0.0.1" : HOST === "::" ? "[::1]" : HOST.includes(":") ? `[${HOST}]` : HOST;
-                const refresh = () => fetch(`http://${internalHost}:${server.address().port}/api/status`, { signal: AbortSignal.timeout(30000) })
+                const refresh = async () => {
+                    if(automation.running)return; automation.running=true;automation.started=true;
+                    try { await fetch(`http://${internalHost}:${server.address().port}/api/status`, { signal: AbortSignal.timeout(30000) })
                     .then(response => { if (!response.ok) throw new Error("status endpoint returned HTTP " + response.status); })
-                    .catch(error => console.error("Status automation refresh failed:", error.message));
+                    .then(()=>{automation.error=false;})
+                    .catch(error=>{automation.error=true;console.error("Status automation refresh failed:",error.message);});
+                    } finally {automation.running=false;automation.lastCompletedAt=new Date().toISOString();}
+                };
+                void refresh();
                 statusAutomationTimer = setInterval(refresh, 60000);
                 statusAutomationTimer.unref();
             }

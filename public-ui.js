@@ -141,6 +141,8 @@
         let html = "<p><strong>Reported availability: " + escape(service?.statusText || service?.status || "Status unavailable") + "</strong></p>";
         html += "<p>" + escape(service?.description || card.querySelector(".service-description").textContent) + "</p>";
         if (service?.healthCheck) html += "<p>Automatic check: " + escape(service.healthCheck.checkedAt ? date(service.healthCheck.checkedAt) : "Awaiting results") + "</p>";
+        if(service?.healthCheck?.monitorError)html+="<p>The automatic monitor needs attention. A service outage has not been confirmed by this check.</p>";
+        if(service?.stale)html+="<p>Last known Microsoft status from "+escape(date(service.checkedAt))+". This data is stale.</p>";
         if (card.dataset.source === "microsoft") html += "<p>Microsoft reports service health. Local impact assessments appear on each notice below.</p>";
         if (!latest) html += "<p>Live status could not be loaded.</p>";
         html += "<h3>Current notices</h3>" + renderItems(latest?.incidents?.filter(i => i.serviceId === selected), "service");

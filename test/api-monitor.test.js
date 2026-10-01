@@ -20,7 +20,7 @@ test("credentials are encrypted on disk, redacted in APIs and available only to 
  const monitor=health.createMonitor(file,async config=>{assert.equal(config.apiKey,"dummy-test-api-key");assert.equal(config.authorization,"Basic dummy-test-auth");return {ok:true,message:"Passed",latencyMs:1};});
  const app=express();app.use(express.json());require("../admin-api")(app,{statusFile:file,key:"test-publishing-key-long-enough",monitor});
  const server=app.listen(0,"127.0.0.1");await new Promise(r=>server.once("listening",r));
- t.after(async()=>{await new Promise(r=>server.close(r));await fs.unlink(file);await fs.rmdir(dir);});
+ t.after(async()=>{await new Promise(r=>server.close(r));await fs.unlink(file);for(const sidecar of ["audit.json","approvals.json","availability.json"])await fs.unlink(path.join(dir,sidecar)).catch(e=>{if(e.code!=="ENOENT")throw e;});await fs.rmdir(dir);});
  const url="http://127.0.0.1:"+server.address().port+"/api/admin/status",headers={Authorization:"Bearer test-publishing-key-long-enough","Content-Type":"application/json"};
  let snapshot=await(await fetch(url,{headers})).json();
  snapshot.data.services[0].monitor={type:"http",target:"https://192.168.1.20/health",interval:60,paused:false,apiKey:"dummy-test-api-key",authorization:"Basic dummy-test-auth",expectedText:"true"};
