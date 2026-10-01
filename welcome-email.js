@@ -12,12 +12,12 @@ function createWelcomeMailer(env = process.env, dependencies = {}) {
         } catch { return { ready: false, message: "The admin sign-in URL is not configured." }; }
         if (!["AZURE_TENANT_ID","AZURE_CLIENT_ID","AZURE_CLIENT_SECRET"].every(key => env[key]))
             return { ready: false, message: "Microsoft 365 email credentials are not configured." };
-        return { ready: true, message: "New enabled accounts receive their username, password and sign-in link by email." };
+        return { ready: true, message: "New enabled accounts receive their username and a secure password setup link by email." };
     }
     return {
         configuration,
-        async send(user, password, event = "created") {
-            if (!["created", "deactivated", "deleted"].includes(event)) throw new Error("Unknown account email event.");
+        async send(user, link, event = "created") {
+            if (!["created", "reset", "deactivated", "deleted"].includes(event)) throw new Error("Unknown account email event.");
             const label = event === "created" ? "welcome email" : "account " + event + " email";
             const config = configuration();
             if (!config.ready) return { status: "not_configured", message: config.message };
@@ -32,9 +32,9 @@ function createWelcomeMailer(env = process.env, dependencies = {}) {
                     signal: AbortSignal.timeout(15000),
                     body: JSON.stringify({
                         message: {
-                            subject: event === "created" ? "Your PTG Status administration account" : "Your PTG Status account has been " + event,
+                            subject: event === "reset" ? "Reset your PTG Status password" : event === "created" ? "Your PTG Status administration account" : "Your PTG Status account has been " + event,
                             from: { emailAddress: { address: env.WELCOME_EMAIL_FROM } },
-                            body: { contentType: "Text", content: event !== "created" ? [
+                            body: { contentType: "Text", content: !["created","reset"].includes(event) ? [
                                 "Hello " + user.firstName + ",", "",
                                 "Your PTG Status administration account (" + user.username + ") has been " + event + ".",
                                 "You can no longer sign in to this account.", "",
@@ -42,11 +42,12 @@ function createWelcomeMailer(env = process.env, dependencies = {}) {
                                 "PTG Service Status"
                             ].join("\n") : [
                                 "Hello " + user.firstName + ",", "",
-                                "Your PTG Status administration account has been created.", "",
+                                event === "created" ? "Your PTG Status administration account has been created." : "A password reset was requested for your PTG Status account.", "",
                                 "Username: " + user.username,
-                                "Password: " + password,
+                                "Choose your password: " + link,
+                                "This one-use link expires in " + (event === "created" ? "24 hours." : "1 hour."),
                                 "Sign in: " + env.ADMIN_SIGN_IN_URL, "",
-                                "Keep these sign-in details private.",
+                                "If you did not request this, contact the IT Team. Your existing password stays unchanged until the link is used.",
                                 "If you need help, contact the IT Team.", "",
                                 "PTG Service Status"
                             ].join("\n") },

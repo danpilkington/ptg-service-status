@@ -8,3 +8,14 @@ users.json
 freshservice-state.json
 teams-state.json
 status.json
+audit.json
+approvals.json
+availability.json
+*.transaction
+microsoft-cache.json
+backups/
+
+*.ptgbackup
+recovery-staging/
+health-state.json
+sql-backup-health.json
