@@ -1,0 +1,79 @@
+"use strict";
+const {ClientSecretCredential}=require("@azure/identity");
+const {revision}=require("./storage"),{commit,update}=require("./governance");
+const guid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const instances=new WeakMap();
+function settings(data){const s=data.microsoftAdmin||{};return {groupAccess:!!s.groupAccess,requireAccount:false,adminGroupId:s.adminGroupId||"",editorGroupId:s.editorGroupId||"",devicesEnabled:!!s.devicesEnabled,staleDays:Number.isInteger(s.staleDays)?s.staleDays:7};}
+function validate(input){
+    if(!input||typeof input.groupAccess!=="boolean"||typeof input.devicesEnabled!=="boolean"||!Number.isInteger(input.staleDays)||input.staleDays<1||input.staleDays>90)throw Error("Enter valid Microsoft controls and a last check-in threshold from 1 to 90 days.");
+    const result={...input};for(const key of ["adminGroupId","editorGroupId"]){if(typeof input[key]!=="string"||(input[key]&&!guid.test(input[key])))throw Error("Enter valid Entra group Object IDs.");result[key]=input[key].toLowerCase();}
+    if(result.groupAccess&&!result.adminGroupId)throw Error("Configure an administrator group before enabling group access.");
+    if(result.adminGroupId&&result.adminGroupId===result.editorGroupId)throw Error("Use different groups for administrator and editor access.");
+    return settings({microsoftAdmin:result});
+}
+function summarize(devices,staleDays,now=Date.now()){
+    const counts={total:devices.length,compliant:0,noncompliant:0,other:0,stale:0,neverCheckedIn:0},states=Object.create(null),platforms=Object.create(null);
+    for(const d of devices){const state=d.complianceState||"unknown";states[state]=(states[state]||0)+1;const os=d.operatingSystem||"Unknown";platforms[os]=(platforms[os]||0)+1;
+        if(state==="compliant")counts.compliant++;else if(state==="noncompliant")counts.noncompliant++;else counts.other++;
+        const stamp=Date.parse(d.lastSyncDateTime);if(!Number.isFinite(stamp)||stamp<=Date.UTC(1970,0,2))counts.neverCheckedIn++;else if(stamp<now-staleDays*86400000)counts.stale++;
+    }return {counts,states,platforms,staleDays,checkedAt:new Date(now).toISOString()};
+}
+function create(storage,{env=process.env,request=global.fetch,clock=Date.now,credential}={}){
+    const ready=!!(env.AZURE_TENANT_ID&&env.AZURE_CLIENT_ID&&env.AZURE_CLIENT_SECRET);
+    if(!credential&&ready)credential=new ClientSecretCredential(env.AZURE_TENANT_ID,env.AZURE_CLIENT_ID,env.AZURE_CLIENT_SECRET);
+    const members=new Map();let last=null,lastThreshold=null,nextDeviceAttempt=0,deviceJob=null,lastFailed=false;
+    async function graph(url,body){
+        const target=new URL(url,"https://graph.microsoft.com");if(target.origin!=="https://graph.microsoft.com"||!target.pathname.startsWith("/v1.0/"))throw Error("Invalid Graph continuation.");
+        if(!credential)throw Error("Configure the existing Azure tenant credentials on the server.");
+        const token=await credential.getToken("https://graph.microsoft.com/.default");
+        const response=await request(target.href,{method:body?"POST":"GET",headers:{Authorization:"Bearer "+token.token,...(body?{"Content-Type":"application/json"}:{})},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(15000)});
+        if(!response.ok){const e=Error(response.status===403?"Microsoft Graph access was denied. Check application permissions, admin consent and Intune licensing.":"Microsoft Graph is temporarily unavailable. Check credentials and connectivity.");e.status=503;throw e;}return response.json();
+    }
+    async function config(){return settings(JSON.parse(await storage.read("status")));}
+    async function role(oid,policy){
+        if(!guid.test(oid))return null;
+        const key=oid+":"+policy.adminGroupId+":"+policy.editorGroupId,cached=members.get(key);
+        if(cached&&cached.expires>clock())return cached.role;
+        const result=await graph("/v1.0/users/"+oid+"/checkMemberGroups",{groupIds:[policy.adminGroupId,policy.editorGroupId].filter(Boolean)});
+        if(!Array.isArray(result.value))throw Error("Microsoft returned an invalid group response.");
+        const ids=result.value.map(id=>String(id).toLowerCase()),resolved=ids.includes(policy.adminGroupId)?"admin":policy.editorGroupId&&ids.includes(policy.editorGroupId)?"editor":null;
+        for(const [id,item]of members)if(item.expires<=clock())members.delete(id);
+        if(members.size>10000)members.clear();members.set(key,{role:resolved,expires:clock()+60000});return resolved;
+    }
+    async function resolve(users,claims,tenant){
+        if(claims.tid!==tenant||!guid.test(claims.oid||""))return null;
+        const matches=users.filter(u=>u.entraObjectId?.toLowerCase()===claims.oid.toLowerCase());
+        if(matches.length>1||matches.some(u=>!u.active))return null;
+        const local=matches.find(u=>u.active&&["admin","editor"].includes(u.role)),policy=await config();
+        if(!policy.groupAccess)return null;
+        const access=await role(claims.oid.toLowerCase(),policy);if(!access)return null;
+        return {...(local||{id:"entra:"+claims.oid.toLowerCase(),username:claims.oid.toLowerCase(),firstName:String(claims.name||"Microsoft user").slice(0,100),lastName:"",jobTitle:"Entra group member",active:true,entraObjectId:claims.oid.toLowerCase()}),role:access,groupManaged:true};
+    }
+    async function devices(){
+        const policy=await config();if(!policy.devicesEnabled)return {enabled:false,message:"Enable the device compliance overview in Microsoft controls."};
+        if(nextDeviceAttempt>clock()&&lastThreshold===policy.staleDays)return {enabled:true,available:!!last,stale:lastFailed,...(last||{}),message:lastFailed?"The latest device refresh failed. Showing the last successful snapshot.":""};
+        if(!deviceJob)deviceJob=(async()=>{
+            nextDeviceAttempt=clock()+300000;lastThreshold=policy.staleDays;
+            try{let url="/v1.0/deviceManagement/managedDevices?$select=id,operatingSystem,complianceState,lastSyncDateTime&$top=999",all=[],pages=0;const seen=new Set();
+                while(url){if(++pages>100||seen.has(url)||all.length>100000)throw Error("The device overview exceeded its safe paging limit.");seen.add(url);const data=await graph(url);if(!Array.isArray(data.value))throw Error("Invalid device response.");all.push(...data.value);url=data["@odata.nextLink"];}
+                last=summarize([...new Map(all.map(d=>[d.id,d])).values()],policy.staleDays,clock());lastFailed=false;
+            }catch{lastFailed=true;nextDeviceAttempt=clock()+60000;}
+            return {enabled:true,available:!!last,stale:lastFailed,...(last||{}),message:lastFailed?(last?"The latest device refresh failed. Showing the last successful snapshot.":"Device data is unavailable. Check DeviceManagementManagedDevices.Read.All application permission, admin consent, Azure credentials and Intune licensing."):""};
+        })().finally(()=>{deviceJob=null;});return deviceJob;
+    }
+    function attach(app){const wrap=fn=>(req,res,next)=>Promise.resolve(fn(req,res)).catch(next),admin=(req,res,next)=>req.adminUser.role==="admin"?next():res.status(403).json({error:"Administrator access required."});
+        app.get("/api/admin/microsoft-controls",admin,wrap(async(req,res)=>{const raw=await storage.read("status");res.json({settings:settings(JSON.parse(raw)),revision:revision(raw),credentialsReady:ready});}));
+        app.put("/api/admin/microsoft-controls",admin,wrap(async(req,res)=>{
+            let value;try{value=validate(req.body.settings);}catch(e){return res.status(400).json({error:e.message});}
+            const raw=await storage.read("status");if(req.body.revision!==revision(raw))return res.status(409).json({error:"Published data changed. Reload Microsoft controls and retry."});
+            if(value.groupAccess){if(env.ADMIN_SSO_ENABLED!=="true")return res.status(400).json({error:"Enable Microsoft SSO on the server before enabling group access."});for(const id of [value.adminGroupId,value.editorGroupId].filter(Boolean)){const group=await graph("/v1.0/groups/"+id+"?$select=id,securityEnabled");if(group.id?.toLowerCase()!==id||group.securityEnabled!==true)return res.status(400).json({error:"Choose existing Entra security groups. Synced AD security groups are supported."});}}
+            const data=JSON.parse(raw);data.microsoftAdmin=value;
+            await commit(storage,[update("status",raw,data)],req.adminUser,"microsoft.controls","admin",JSON.stringify(value));members.clear();nextDeviceAttempt=0;
+            res.json({settings:value,revision:revision(JSON.stringify(data,null,2)+"\n"),credentialsReady:ready});
+        }));
+        app.get("/api/admin/device-compliance",admin,wrap(async(req,res)=>res.json(await devices())));
+    }
+    return {resolve,role,devices,attach,config};
+}
+function forStorage(storage){if(!instances.has(storage))instances.set(storage,create(storage));return instances.get(storage);}
+module.exports={create,forStorage,settings,validate,summarize};

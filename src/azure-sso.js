@@ -13,7 +13,7 @@ function authorisedUser(users, claims, tenant) {
     const matches = users.filter(u => u.active && ["admin", "editor"].includes(u.role) && u.entraObjectId?.toLowerCase() === claims.oid.toLowerCase());
     return matches.length === 1 ? matches[0] : null;
 }
-module.exports = function attachSso(app, { read, issueSession, wrap, config = configuration(), verifyIdentity }) {
+module.exports = function attachSso(app, { read, issueSession, wrap, config = configuration(), verifyIdentity, resolveUser }) {
     const pending = new Map(), handoffs = new Map();
     const random = () => randomBytes(32).toString("base64url");
     const cookie = (req, name) => (req.get("Cookie") || "").split(";").map(v => v.trim()).find(v => v.startsWith(name + "="))?.slice(name.length + 1);
@@ -66,12 +66,12 @@ module.exports = function attachSso(app, { read, issueSession, wrap, config = co
             if(!response.ok){const body=await response.json().catch(()=>({}));return fail(res,"exchange",Array.isArray(body.error_codes)?body.error_codes:[]);}
             const result=await response.json();stage="validation";
             const claims=await verify(result.id_token,stored.nonce);stage="storage";
-            const user = authorisedUser(await read(), claims, config.tenant);
+            const user = resolveUser ? await resolveUser(await read(), claims, config.tenant) : authorisedUser(await read(), claims, config.tenant);
             if (!user) return res.redirect("/admin/?sso=denied");
             stage="capacity";prune(handoffs);
             if (handoffs.size >= 10000) throw new Error("Sign-in busy");
             const id = random();
-            handoffs.set(id, { userId: user.id, objectId: claims.oid.toLowerCase(), expires: Date.now() + 60000 });
+            handoffs.set(id, { claims:{tid:claims.tid,oid:claims.oid,name:claims.name},userId: user.id, objectId: claims.oid.toLowerCase(), expires: Date.now() + 60000 });
             res.cookie("ptg_sso_handoff", id, { ...options, maxAge: 60000 });
             diagnostics.lastSuccessAt=new Date().toISOString();
             res.redirect("/admin/?sso=complete");
@@ -81,9 +81,10 @@ module.exports = function attachSso(app, { read, issueSession, wrap, config = co
         const id = cookie(req, "ptg_sso_handoff"), item = handoffs.get(id);
         handoffs.delete(id); res.clearCookie("ptg_sso_handoff", clearOptions);
         if (!item || item.expires <= Date.now()) return res.status(401).json({ error: "Microsoft sign-in expired. Please try again." });
-        const user = (await read()).find(u => u.id === item.userId && u.active && ["admin", "editor"].includes(u.role) && u.entraObjectId?.toLowerCase() === item.objectId);
+        let user;
+        try {user = resolveUser ? await resolveUser(await read(),item.claims,config.tenant) : (await read()).find(u => u.id === item.userId && u.active && ["admin", "editor"].includes(u.role) && u.entraObjectId?.toLowerCase() === item.objectId);} catch {return res.status(503).json({error:"Group access could not be verified. Please try again."});}
         if (!user) return res.status(403).json({ error: "Your account is not authorised for this admin page." });
-        res.json(issueSession(user));
+        res.json(issueSession(user,resolveUser?item.claims:undefined));
     }));
 };
 module.exports.configuration = configuration;

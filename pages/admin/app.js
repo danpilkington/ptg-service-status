@@ -96,7 +96,7 @@
     }
     let management=null;
     const clearManagementViews=()=>management?.clear();
-    const hasUnsaved = () => dirty || changedForms.size > 0 || !!management?.dirty();
+    const hasUnsaved = () => dirty || changedForms.size > 0 || !!management?.dirty() || !!microsoftViews?.dirty();
 
     function changes() {
         if (!baseline || !data) return [];
@@ -553,6 +553,7 @@
         const descriptions = { "company-portal": "PTG application and device enrolment experience", vpn: "Secure remote access to PTG resources", network: "PTG office connectivity", "meeting-rooms": "Room calendars, panels and meeting spaces", freshservice: "PTG IT support portal" };
         data.services.forEach(service => { service.description ??= descriptions[service.id] || ""; service.group ??= ""; service.order ??= 100; });
         baseline = structuredClone(data);
+        $("dashboard-refresh-seconds").value=String(data.dashboardRefreshSeconds||30);
         publishedIds = new Set(data.incidents.map(i => i.id));
         $("connection").hidden = true; $("editor").hidden = false;
         $("published").textContent = format(data.publishedAt); $("published").dateTime = data.publishedAt;
@@ -607,7 +608,7 @@
                 text("p", user.username + " · " + (user.role === "admin" ? "Administrator" : "Editor") + " · " + (user.active ? "Enabled" : "Disabled")),
                 button("Edit account", () => {
                     editingUser = user.id;
-                    $("user-entraObjectId").value = user.entraObjectId || ""; $("user-email").value = user.email || ""; $("user-email").required = false;
+                    $("user-email").value = user.email || ""; $("user-email").required = false;
                     for (const field of ["username", "firstName", "lastName", "jobTitle", "role"]) $("user-" + field).value = user[field];
                     $("user-active").checked = user.active; $("user-password").value = ""; $("user-password").required = false;
                     $("user-editor-title").textContent = "Edit " + user.username; $("user-username").focus();
@@ -639,6 +640,8 @@
         const admin = user.role === "admin";
         accountRole=user.role;
         await loadIntegrations();
+        $("microsoft-controls-nav").hidden=!admin;$("device-compliance-nav").hidden=!admin;
+        if(admin)await microsoftViews.load();
         $("audit-nav").hidden=!admin;$("subscribers-nav").hidden=!admin;$("reviews-nav").hidden=!admin;
         $("publish").textContent=admin?"Publish changes":"Submit for approval";
         $("manage-users").hidden = !admin; $("users-nav").hidden = !admin;
@@ -658,7 +661,7 @@
         event.preventDefault();
         run(async () => {
             const body = {};
-            for (const field of ["username", "email", "entraObjectId", "firstName", "lastName", "jobTitle", "role", "password"]) body[field] = $("user-" + field).value;
+            for (const field of ["username", "email", "firstName", "lastName", "jobTitle", "role", "password"]) body[field] = $("user-" + field).value;
             body.active = $("user-active").checked;
             try {
                 const saved = await accountRequest("users" + (editingUser ? "/" + encodeURIComponent(editingUser) : ""), editingUser ? "PUT" : "POST", body);
@@ -766,7 +769,7 @@
         clearRecovery(); credentialEdits.clear();
         $("service-api-key").value="";$("service-api-auth").value="";
         accountRequest("logout", "POST").catch(() => {}); clearUserForm(); $("users-list").replaceChildren(); $("users-feedback").textContent = ""; $("login-password").value = "";
-        clearManagementViews(); key = ""; data = null; baseline = null; revision = ""; dirty = false; publicIssues = []; changedForms.clear();
+        clearManagementViews(); microsoftViews.clear(); key = ""; data = null; baseline = null; revision = ""; dirty = false; publicIssues = []; changedForms.clear();
         document.querySelector("[data-integration-panel]").hidden=true; $("integration-health").replaceChildren();
         $("editor").hidden = true; $("connection").hidden = false; $("admin-key").value = "";
         $("published").textContent = "Connect to load"; $("published").removeAttribute("datetime");
@@ -972,6 +975,15 @@
             $("integration-feedback").textContent="Integration health could not be loaded. Previous results are no longer shown; check your connection or sign in again.";
         }
     }
+    $("dashboard-refresh-form").addEventListener("submit",event=>{
+        event.preventDefault();
+        if(hasUnsaved())return feedback("Publish or discard your other edits before changing the refresh interval.",true);
+        run(async()=>{
+            const response=await fetch("/api/admin/dashboard-refresh",{method:"PUT",headers:{Authorization:"Bearer "+key,"Content-Type":"application/json"},body:JSON.stringify({seconds:Number($("dashboard-refresh-seconds").value),revision})});
+            const result=await response.json();if(!response.ok)throw new Error(result.error||"Refresh interval could not be saved.");
+            data=result.data;revision=result.revision;render();$("dashboard-refresh-feedback").textContent="Saved. Open dashboards apply this interval on their next refresh.";
+        });
+    });
     $("refresh-integrations")?.addEventListener("click",()=>void loadIntegrations());
     window.setInterval(()=>{if(!busy){void loadHealthResults();void loadIntegrations();}},30000);
 
@@ -1155,6 +1167,7 @@
         key = result.token; await load(); await loadAccount();
     });
     else if (ssoResult) feedback(ssoResult === "denied" ? "Your Microsoft account is not authorised. Contact IT Support to link and enable your account." : "Microsoft sign-in could not be completed. Please try again.", true);
+    const microsoftViews=window.PTGMicrosoftAdmin({$,accountRequest,run,text,format,hasOtherEdits:()=>dirty||changedForms.size>0||!!management?.dirty(),afterSave:async()=>{await load();}});
 })();
 
 

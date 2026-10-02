@@ -29,6 +29,7 @@ test("individual users persist, enforce permissions and revoke sessions", async 
     assert.equal((await send("users", "GET", null, "")).status, 401);
     assert.equal((await send("users", "POST", account, key, { Origin: "https://attacker.example" })).status, 403);
     assert.equal((await send("users", "POST", { ...account, password: "short" })).status, 400);
+    assert.equal((await send("users", "POST", {...account,entraObjectId:"11111111-1111-1111-1111-111111111111"})).status,400);
     const created = await send("users", "POST", account); assert.equal(created.status, 201);
     const admin = (await created.json()).user;
     assert.equal(admin.passwordHash, undefined);

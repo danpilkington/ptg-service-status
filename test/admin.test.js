@@ -150,3 +150,21 @@ test("service creation, edits and removal preserve linked history", async t => {
     const forged=structuredClone(snapshot);forged.data.incidents.push({...forged.data.incidents[0],id:"forged"});
     assert.equal((await put(forged)).status,400);
 });
+
+test("dashboard refresh setting validates, persists, audits and detects stale edits",async t=>{
+    const dir=await fs.mkdtemp(path.join(os.tmpdir(),"ptg-refresh-")),file=path.join(dir,"status.json");
+    await fs.writeFile(file,JSON.stringify({services:[],incidents:[],maintenance:[]}));
+    const app=express();app.use(express.json());const key="refresh-test-key-at-least-24-characters";attach(app,{statusFile:file,key});
+    const server=app.listen(0,"127.0.0.1");await new Promise(r=>server.once("listening",r));
+    t.after(async()=>{await new Promise(r=>server.close(r));for(const name of ["status.json","audit.json"])await fs.unlink(path.join(dir,name)).catch(()=>{});await fs.rmdir(dir);});
+    const base="http://127.0.0.1:"+server.address().port;
+    const snapshot=await(await fetch(base+"/api/admin/status",{headers:{Authorization:"Bearer "+key}})).json();
+    const save=(seconds,revision=snapshot.revision,auth=key)=>fetch(base+"/api/admin/dashboard-refresh",{method:"PUT",headers:{Authorization:"Bearer "+auth,"Content-Type":"application/json"},body:JSON.stringify({seconds,revision})});
+    assert.equal((await save(60,snapshot.revision,"invalid")).status,401);
+    for(const seconds of [0,1,10,301,"60"])assert.equal((await save(seconds)).status,400);
+    const response=await save(120);assert.equal(response.status,200);const result=await response.json();assert.equal(result.data.dashboardRefreshSeconds,120);
+    assert.equal((await save(30)).status,409);
+    assert.equal(JSON.parse(await fs.readFile(file,"utf8")).dashboardRefreshSeconds,120);
+    assert.equal(JSON.parse(await fs.readFile(path.join(dir,"audit.json"),"utf8")).at(-1).action,"dashboard.refresh");
+    assert.equal((await save(30,result.revision)).status,200);
+});

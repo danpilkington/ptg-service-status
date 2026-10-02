@@ -2,7 +2,7 @@
     "use strict";
 
     const API_URL = "/api/status";
-    const REFRESH_INTERVAL_MS = 30 * 1000;
+    let REFRESH_INTERVAL_MS = 30 * 1000;
 
     const labels = {
         operational: "Operational",
@@ -315,6 +315,7 @@
         }
 
         const data = await response.json();
+        if ([15,30,60,120,300].includes(data.dashboardRefreshSeconds)) REFRESH_INTERVAL_MS = data.dashboardRefreshSeconds * 1000;
         renderStatus(data);
     }
 

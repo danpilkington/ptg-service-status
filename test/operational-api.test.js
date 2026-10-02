@@ -4,7 +4,7 @@ const fs=require("node:fs/promises"),os=require("node:os"),path=require("node:pa
 
 test("public stale status keeps notices but suppresses alert/recovery and known availability; readiness detects storage failure",async t=>{
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),"ptg-operational-")),file=path.join(dir,"status.json");
- await fs.writeFile(file,JSON.stringify({services:[{id:"vpn",name:"VPN",status:"operational"}],incidents:[],maintenance:[]}));
+ await fs.writeFile(file,JSON.stringify({dashboardRefreshSeconds:300,services:[{id:"vpn",name:"VPN",status:"operational"}],incidents:[],maintenance:[]}));
  Object.assign(process.env,{STORAGE_DRIVER:"file",STATUS_FILE:file,USERS_FILE:path.join(dir,"users.json"),ADMIN_API_KEY:"operational-test-key-at-least-24",AZURE_TENANT_ID:"",AZURE_CLIENT_ID:"",AZURE_CLIENT_SECRET:"",FRESHSERVICE_DOMAIN:"",FRESHSERVICE_API_KEY:"",FRESHSERVICE_REQUESTER_EMAIL:"",TEAMS_WEBHOOK_URL:"",WELCOME_EMAIL_ENABLED:"false"});
  let stale=true;const observations={teams:[],freshservice:[]};
  mock.method(require("../src/integration-health"),"createMicrosoftCache",()=>({get:async()=>({available:!stale,stale,checkedAt:"2026-01-01T00:00:00Z",data:{services:[{id:"microsoft-teams",source:"Microsoft",serviceName:"Teams",status:"operational",statusText:"Operational"}],incidents:[{id:"retained-issue",serviceId:"microsoft-teams",title:"Retained notice",source:"Microsoft"}],maintenance:[]}})}));
@@ -14,6 +14,7 @@ test("public stale status keeps notices but suppresses alert/recovery and known 
  t.after(async()=>{mock.restoreAll();await new Promise(r=>server.close(r));for(const name of await fs.readdir(dir))await fs.unlink(path.join(dir,name));await fs.rmdir(dir);});
  const base="http://127.0.0.1:"+server.address().port;
  const result=await(await fetch(base+"/api/status")).json();await new Promise(r=>setImmediate(r));
+ assert.equal(result.dashboardRefreshSeconds,300);
  assert.equal(result.microsoftStale,true);assert.equal(result.incidents[0].id,"retained-issue");assert.equal(result.services[0].status,"operational");assert.match(result.services[0].statusText,/last known/);assert.equal(result.overall.status,"unknown");
  for(const sent of [observations.teams[0],observations.freshservice[0]])assert.equal(sent.find(s=>s.id==="microsoft-teams").status,"unknown");
  const recorded=JSON.parse(await app.locals.storage.read("availability"));assert.equal(recorded.previous.find(s=>s.id==="microsoft-teams").status,"unknown");

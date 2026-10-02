@@ -106,7 +106,7 @@ const publicFiles = new Map([
     ["/maintenance-calendar.js", "assets/maintenance-calendar.js"], ["/service-metadata.js", "assets/service-metadata.js"],
     ["/admin/", "pages/admin/index.html"], ["/admin/index.html", "pages/admin/index.html"],
     ["/admin/style.css", "pages/admin/style.css"], ["/admin/app.js", "pages/admin/app.js"],
-    ["/admin/management.js", "pages/admin/management.js"],
+    ["/admin/management.js", "pages/admin/management.js"], ["/admin/microsoft.js", "pages/admin/microsoft.js"],
     ["/admin/password.html", "pages/admin/password.html"], ["/admin/password.js", "pages/admin/password.js"]
 ]);
 app.get(/^\/admin$/, (req, res) => res.redirect(302, "/admin/"));
@@ -244,6 +244,7 @@ async function readLocalStatus() {
     const data = JSON.parse(content);
 
     return {
+        dashboardRefreshSeconds: data.dashboardRefreshSeconds,
         announcement: data.announcement || null,
         publishedAt: data.publishedAt || new Date().toISOString(),
         services: Array.isArray(data.services)
@@ -541,6 +542,7 @@ app.get("/api/status", async (request, response) => {
     const assessedMicrosoftIncidents = applyAssessments(microsoftIncidents, localStatus.microsoftAssessments);
     const localIncidents = localStatus.incidents.map(normaliseIncident);
     const responseBody = {
+        dashboardRefreshSeconds: [15,30,60,120,300].includes(localStatus.dashboardRefreshSeconds) ? localStatus.dashboardRefreshSeconds : 30,
         checkedAt: new Date().toISOString(),
         publishedAt: localStatus.publishedAt,
         announcement: activeAnnouncement(localStatus.announcement, now),

@@ -11,8 +11,10 @@ const uniqueItems = (items, limit) => Array.isArray(items) && items.length <= li
 module.exports = function attachAdmin(app, { statusFile, monitor, key = process.env.ADMIN_API_KEY, storage = createFileStorage(statusFile), availability = require("./availability").createAvailability(storage), welcomeMailer, integrationHealth, subscriptions }) {
     let writing = false;
     require("./user-auth")(app, { statusFile, key, storage, welcomeMailer });
+    require("./microsoft-admin").forStorage(storage).attach(app);
     const adminView=(value,user)=>{
         const result=health.redact(value);
+        if(user.role!=="admin")delete result.microsoftAdmin;
         if(result.services)result.services=result.services.map(service=>user.role==="admin"?service:require("../assets/service-metadata").publicService(service));
         return result;
     };
@@ -20,6 +22,16 @@ module.exports = function attachAdmin(app, { statusFile, monitor, key = process.
     subscriberManager.attachAdministration(app);
     require("./incident-reviews").attachReviews(app,{storage});
     const wrap=fn=>(req,res,next)=>Promise.resolve(fn(req,res)).catch(next);
+    app.put("/api/admin/dashboard-refresh",wrap(async(req,res)=>{
+        if(req.adminUser.role!=="admin")return res.status(403).json({error:"Administrator access required."});
+        const seconds=req.body.seconds;
+        if(![15,30,60,120,300].includes(seconds))return res.status(400).json({error:"Choose a supported refresh interval."});
+        const raw=await storage.read("status");
+        if(req.body.revision!==revision(raw))return res.status(409).json({error:"Status has changed. Reload before saving the refresh interval."});
+        const current=JSON.parse(raw);current.dashboardRefreshSeconds=seconds;
+        await commit(storage,[update("status",raw,current)],req.adminUser,"dashboard.refresh","dashboard",String(seconds)+" seconds");
+        res.json({data:adminView(current,req.adminUser),revision:revision(JSON.stringify(current,null,2)+"\n")});
+    }));
     app.get("/api/admin/integrations",wrap(async(req,res)=>{
         if(req.adminUser.role!=="admin")return res.status(403).json({error:"Administrator access required."});
         if(!integrationHealth)return res.status(503).json({error:"Integration health is unavailable. Restart with the updated server."});

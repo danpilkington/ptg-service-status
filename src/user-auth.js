@@ -5,7 +5,7 @@ const { createWelcomeMailer, validEmail } = require("./welcome-email");
 const { randomBytes, randomUUID, scrypt, timingSafeEqual, createHash } = require("node:crypto");
 const {commit,update}=require("./governance");
 const derive = require("node:util").promisify(scrypt);
-const publicUser = ({ id, username, firstName, lastName, jobTitle, role, active, email = "", passwordSetupRequired = false, entraObjectId = "" }) => ({ id, username, firstName, lastName, jobTitle, role, active, email, passwordSetupRequired, entraObjectId });
+const publicUser = ({ id, username, firstName, lastName, jobTitle, role, active, email = "", passwordSetupRequired = false, entraObjectId = "", groupManaged = false }) => ({ id, username, firstName, lastName, jobTitle, role, active, email, passwordSetupRequired, entraObjectId, groupManaged });
 const equal = (a, b) => { const x = Buffer.from(a), y = Buffer.from(b); return x.length === y.length && timingSafeEqual(x, y); };
 async function hashPassword(password, salt = randomBytes(16).toString("hex")) {
     return salt + ":" + (await derive(password, salt, 64)).toString("hex");
@@ -71,14 +71,15 @@ module.exports = function attachUsers(app, { statusFile, key, usersFile = proces
             res.json({message:"Password saved. You can now sign in."});
         }finally{writing=false;}
     }));
-    function issueSession(user) {
+    const microsoftAdmin=require("./microsoft-admin").forStorage(storage);
+    function issueSession(user, sso) {
         for (const [token, session] of sessions) if (session.expires <= Date.now()) sessions.delete(token);
         if (sessions.size >= 10000) throw new Error("Sign-in is busy. Try again later.");
         const token = randomBytes(32).toString("hex");
-        sessions.set(token, { userId: user.id, expires: Date.now() + 8 * 3600000 });
+        sessions.set(token, { userId: user.id, sso, expires: Date.now() + 8 * 3600000 });
         return { token, user: publicUser(user) };
     }
-    require("./azure-sso")(app, { read, issueSession, wrap });
+    require("./azure-sso")(app, { read, issueSession, wrap,resolveUser:microsoftAdmin.resolve });
     app.post("/api/admin/login", wrap(async (req, res) => {
         const now = Date.now();
         for (const [ip, entry] of attempts) if (entry.until <= now) attempts.delete(ip);
@@ -105,10 +106,12 @@ module.exports = function attachUsers(app, { statusFile, key, usersFile = proces
             req.adminUser = { id: "bootstrap", role: "admin", firstName: "Administrator" };
             return next();
         }
-        if ((!key || key.length < 24) && !(await read()).some(u => u.active)) return res.status(503).json({ error: "Publishing is disabled. Configure ADMIN_API_KEY with at least 24 characters on the server to create the first administrator." });
+        if ((!key || key.length < 24) && !(await read()).some(u => u.active) && !(await microsoftAdmin.config()).groupAccess) return res.status(503).json({ error: "Publishing is disabled. Configure ADMIN_API_KEY with at least 24 characters on the server to create the first administrator." });
         const session = sessions.get(token);
         if (session && session.expires > Date.now()) {
-            const user = (await read()).find(u => u.id === session.userId && u.active);
+            let user;
+            if(session.sso){try{user=await microsoftAdmin.resolve(await read(),session.sso,process.env.AZURE_TENANT_ID?.toLowerCase());}catch{return res.status(503).json({error:"Microsoft group access could not be verified. Please retry."});}}
+            else user = (await read()).find(u => u.id === session.userId && u.active);
             if (user) { req.adminUser = publicUser(user); req.sessionToken = token; return next(); }
         }
         sessions.delete(token);
@@ -139,9 +142,8 @@ module.exports = function attachUsers(app, { statusFile, key, usersFile = proces
             const email = input.email === undefined ? current?.email || "" : typeof input.email === "string" ? input.email.trim() : null;
             if ((!current && !validEmail(email)) || (email !== "" && !validEmail(email)))
                 return res.status(400).json({ error: "Enter a valid email address for the user." });
-            const entraObjectId = input.entraObjectId === undefined ? current?.entraObjectId || "" : typeof input.entraObjectId === "string" ? input.entraObjectId.trim().toLowerCase() : null;
-            if (entraObjectId === null || (entraObjectId && !require("./azure-sso").guid.test(entraObjectId))) return res.status(400).json({ error: "Enter a valid Microsoft Entra user Object ID, or leave it blank." });
-            if (entraObjectId && users.some(u => u.id !== current?.id && u.entraObjectId?.toLowerCase() === entraObjectId)) return res.status(409).json({ error: "That Microsoft account is already linked to another user." });
+            if (Object.hasOwn(input,"entraObjectId")) return res.status(400).json({ error: "Individual Entra ID linking has been removed. Configure Microsoft access using security groups." });
+            const entraObjectId = current?.entraObjectId || "";
             const username = input.username.trim().toLowerCase();
             if (users.some(u => u.username === username && u.id !== current?.id)) return res.status(409).json({ error: "That username already exists." });
             const password = input.password;
