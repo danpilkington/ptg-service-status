@@ -45,11 +45,19 @@ function create(storage,{env=process.env,request=global.fetch,clock=Date.now,cre
         for(const [id,item]of members)if(item.expires<=clock())members.delete(id);
         if(members.size>10000)members.clear();members.set(key,{role:resolved,expires:clock()+60000});return resolved;
     }
+    const profiles=new Map();
+    async function profile(oid){
+        const cached=profiles.get(oid);if(cached&&cached.expires>clock())return cached.value;
+        let value={jobTitle:""},ttl=60000;
+        try{const result=await graph("/v1.0/users/"+oid+"?$select=displayName,jobTitle");value={jobTitle:typeof result.jobTitle==="string"?result.jobTitle.trim().slice(0,160):""};ttl=300000;}catch{/* Profile enrichment never grants or blocks access. */}
+        for(const [id,p]of profiles)if(p.expires<=clock())profiles.delete(id);if(profiles.size>10000)profiles.clear();profiles.set(oid,{value,expires:clock()+ttl});return value;
+    }
     async function resolve(users,claims,tenant){
         if(claims.tid!==tenant||!guid.test(claims.oid||""))return null;
         const policy=await config();if(!policy.groupAccess)return null;
         const access=await role(claims.oid.toLowerCase(),policy);if(!access)return null;
-        return {...({id:"entra:"+claims.oid.toLowerCase(),username:claims.oid.toLowerCase(),firstName:String(claims.name||"Microsoft user").slice(0,100),lastName:"",jobTitle:"Entra group member",active:true,entraObjectId:claims.oid.toLowerCase()}),role:access,groupManaged:true};
+        const info=await profile(claims.oid.toLowerCase());
+        return {...({id:"entra:"+claims.oid.toLowerCase(),username:claims.oid.toLowerCase(),firstName:String(claims.name||"Microsoft user").slice(0,100),lastName:"",jobTitle:info.jobTitle,active:true,entraObjectId:claims.oid.toLowerCase()}),role:access,groupManaged:true};
     }
     async function devices(){
         const policy=await config();if(!policy.devicesEnabled)return {enabled:false,message:"Enable the device compliance overview in Microsoft controls."};

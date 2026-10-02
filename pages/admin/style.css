@@ -417,3 +417,6 @@ form>button{margin-top:16px}
 @media(max-width:650px){.dependency-options,.review-action-row{grid-template-columns:1fr}.subscriber-controls{align-items:stretch;flex-direction:column}.subscriber-controls label{width:100%;min-width:0}.subscriber-row .actions button{flex:1 1 140px}}
 
 #microsoft-controls-form{display:grid;gap:12px;max-width:760px}#microsoft-controls-form label:has(input[type=checkbox]){display:flex;align-items:center;gap:10px}#microsoft-controls-form input[type=checkbox]{width:auto}#device-compliance-counts{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin:20px 0}
+
+.admin-heading-row{display:flex;align-items:baseline;justify-content:flex-start;gap:0 32px;flex-wrap:wrap}.admin-page .hero p.admin-welcome{margin:8px 0;font-family:inherit;font-size:clamp(30px,3vw,38px);font-weight:700;letter-spacing:-1.3px;line-height:1.04;color:#fff;overflow-wrap:anywhere}.admin-welcome[hidden]{display:none}
+@media(max-width:650px){.admin-heading-row{gap:0}.admin-page .hero p.admin-welcome{width:100%;font-size:34px;margin:0 0 12px}}

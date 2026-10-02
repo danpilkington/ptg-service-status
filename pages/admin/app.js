@@ -596,6 +596,8 @@
     async function loadAccount() {
         const { user } = await accountRequest("me");
         signedInUserId = user.id;
+        const displayName=[user.firstName,user.lastName].filter(Boolean).join(" ").trim()||user.username||"Administrator";
+        $("admin-welcome").textContent="Welcome, "+displayName+(user.jobTitle?.trim()?" | "+user.jobTitle.trim():"");$("admin-welcome").hidden=false;
         const admin = user.role === "admin";
         accountRole=user.role;
         await loadIntegrations();
@@ -700,6 +702,7 @@
         document.querySelector("[data-integration-panel]").hidden=true; $("integration-health").replaceChildren();
         $("editor").hidden = true; $("connection").hidden = false; $("admin-key").value = "";
         $("published").textContent = "Connect to load"; $("published").removeAttribute("datetime");
+        $("admin-welcome").textContent="";$("admin-welcome").hidden=true;
         feedback("Signed out."); $("microsoft-sign-in").focus();
     });
     $("preview").addEventListener("click", () => {

@@ -9,9 +9,9 @@ test("group settings accept security group IDs and reject ambiguous roles and in
 });
 test("automatic group access maps roles, denies disabled accounts and wrong tenants, and rechecks membership",async()=>{
  let groups=[admin,editor],calls=0,failed=false;
- const f=fixture(async(url,options)=>{calls++;assert.match(url,/users.*checkMemberGroups/);assert.deepEqual(JSON.parse(options.body).groupIds,[admin,editor]);if(failed)return {ok:false,status:403};return {ok:true,json:async()=>({value:groups})};});
+ const f=fixture(async(url,options)=>{if(url.includes("$select="))return {ok:true,json:async()=>({jobTitle:"IT Manager"})};calls++;assert.match(url,/users.*checkMemberGroups/);assert.deepEqual(JSON.parse(options.body).groupIds,[admin,editor]);if(failed)return {ok:false,status:403};return {ok:true,json:async()=>({value:groups})};});
  const claims={tid:tenant,oid,name:"Example"};
- let user=await f.api.resolve([],claims,tenant);assert.equal(user.role,"admin");assert.equal(user.groupManaged,true);assert.equal(user.id,"entra:"+oid);
+ let user=await f.api.resolve([],claims,tenant);assert.equal(user.role,"admin");assert.equal(user.jobTitle,"IT Manager");assert.equal(user.groupManaged,true);assert.equal(user.id,"entra:"+oid);
  assert.equal(await f.api.resolve([], {...claims,tid:oid},tenant),null);
  assert.equal((await f.api.resolve([{entraObjectId:oid,active:false}],claims,tenant)).role,"admin");
  groups=[editor];user=await f.api.resolve([],claims,tenant);assert.equal(user.role,"admin");assert.equal(calls,1);
