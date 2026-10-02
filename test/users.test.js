@@ -12,7 +12,7 @@ test("individual users persist, enforce permissions and revoke sessions", async 
     const statusFile = path.join(dir, "status.json");
     await fs.writeFile(statusFile, JSON.stringify({ services: [], incidents: [], maintenance: [] }));
     const key = "bootstrap-test-key-at-least-24-characters";
-    const app = express(); app.use(express.json()); attach(app, { statusFile, key });
+    const app = express(); app.use(express.json()); attach(app, {allowLocalUsers:true, statusFile, key });
     const server = app.listen(0, "127.0.0.1");
     await new Promise(resolve => server.once("listening", resolve));
     t.after(async () => {
@@ -64,7 +64,7 @@ test("individual users persist, enforce permissions and revoke sessions", async 
     assert.equal((await send("login", "POST", { username: "editor", password: newPassword }, "")).status, 401);
     assert.equal((await send("logout", "POST", {}, adminToken)).status, 200);
     assert.equal((await send("me", "GET", null, adminToken)).status, 401);
-    const restarted = express(); restarted.use(express.json()); attach(restarted, { statusFile, key: "" });
+    const restarted = express(); restarted.use(express.json()); attach(restarted, { allowLocalUsers:true,statusFile, key: "" });
     const second = restarted.listen(0, "127.0.0.1");
     await new Promise(resolve => second.once("listening", resolve));
     try {

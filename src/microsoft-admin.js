@@ -3,7 +3,7 @@ const {ClientSecretCredential}=require("@azure/identity");
 const {revision}=require("./storage"),{commit,update}=require("./governance");
 const guid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const instances=new WeakMap();
-function settings(data){const s=data.microsoftAdmin||{};return {groupAccess:!!s.groupAccess,requireAccount:false,adminGroupId:s.adminGroupId||"",editorGroupId:s.editorGroupId||"",devicesEnabled:!!s.devicesEnabled,staleDays:Number.isInteger(s.staleDays)?s.staleDays:7};}
+function settings(data){const s=data.microsoftAdmin||{};return {groupAccess:!!s.groupAccess,requireAccount:false,mfaEnabled:!!s.mfaEnabled,adminGroupId:s.adminGroupId||"",editorGroupId:s.editorGroupId||"",devicesEnabled:!!s.devicesEnabled,staleDays:Number.isInteger(s.staleDays)?s.staleDays:7};}
 function validate(input){
     if(!input||typeof input.groupAccess!=="boolean"||typeof input.devicesEnabled!=="boolean"||!Number.isInteger(input.staleDays)||input.staleDays<1||input.staleDays>90)throw Error("Enter valid Microsoft controls and a last check-in threshold from 1 to 90 days.");
     const result={...input};for(const key of ["adminGroupId","editorGroupId"]){if(typeof input[key]!=="string"||(input[key]&&!guid.test(input[key])))throw Error("Enter valid Entra group Object IDs.");result[key]=input[key].toLowerCase();}
@@ -17,6 +17,11 @@ function summarize(devices,staleDays,now=Date.now()){
         if(state==="compliant")counts.compliant++;else if(state==="noncompliant")counts.noncompliant++;else counts.other++;
         const stamp=Date.parse(d.lastSyncDateTime);if(!Number.isFinite(stamp)||stamp<=Date.UTC(1970,0,2))counts.neverCheckedIn++;else if(stamp<now-staleDays*86400000)counts.stale++;
     }return {counts,states,platforms,staleDays,checkedAt:new Date(now).toISOString()};
+}
+function summarizeMfa(rows,now=Date.now()){
+ const counts={total:rows.length,registered:0,notRegistered:0,unknown:0,capable:0,passwordless:0,ssprRegistered:0,admins:0,adminsNotRegistered:0},methods=Object.create(null);
+ for(const r of rows){if(r.isMfaRegistered===true)counts.registered++;else if(r.isMfaRegistered===false)counts.notRegistered++;else counts.unknown++;if(r.isMfaCapable===true)counts.capable++;if(r.isPasswordlessCapable===true)counts.passwordless++;if(r.isSsprRegistered===true)counts.ssprRegistered++;if(r.isAdmin===true){counts.admins++;if(r.isMfaRegistered===false)counts.adminsNotRegistered++;}for(const m of new Set(Array.isArray(r.methodsRegistered)?r.methodsRegistered:[]))methods[m]=(methods[m]||0)+1;}
+ return {counts,methods,checkedAt:new Date(now).toISOString()};
 }
 function create(storage,{env=process.env,request=global.fetch,clock=Date.now,credential}={}){
     const ready=!!(env.AZURE_TENANT_ID&&env.AZURE_CLIENT_ID&&env.AZURE_CLIENT_SECRET);
@@ -42,12 +47,9 @@ function create(storage,{env=process.env,request=global.fetch,clock=Date.now,cre
     }
     async function resolve(users,claims,tenant){
         if(claims.tid!==tenant||!guid.test(claims.oid||""))return null;
-        const matches=users.filter(u=>u.entraObjectId?.toLowerCase()===claims.oid.toLowerCase());
-        if(matches.length>1||matches.some(u=>!u.active))return null;
-        const local=matches.find(u=>u.active&&["admin","editor"].includes(u.role)),policy=await config();
-        if(!policy.groupAccess)return null;
+        const policy=await config();if(!policy.groupAccess)return null;
         const access=await role(claims.oid.toLowerCase(),policy);if(!access)return null;
-        return {...(local||{id:"entra:"+claims.oid.toLowerCase(),username:claims.oid.toLowerCase(),firstName:String(claims.name||"Microsoft user").slice(0,100),lastName:"",jobTitle:"Entra group member",active:true,entraObjectId:claims.oid.toLowerCase()}),role:access,groupManaged:true};
+        return {...({id:"entra:"+claims.oid.toLowerCase(),username:claims.oid.toLowerCase(),firstName:String(claims.name||"Microsoft user").slice(0,100),lastName:"",jobTitle:"Entra group member",active:true,entraObjectId:claims.oid.toLowerCase()}),role:access,groupManaged:true};
     }
     async function devices(){
         const policy=await config();if(!policy.devicesEnabled)return {enabled:false,message:"Enable the device compliance overview in Microsoft controls."};
@@ -61,6 +63,13 @@ function create(storage,{env=process.env,request=global.fetch,clock=Date.now,cre
             return {enabled:true,available:!!last,stale:lastFailed,...(last||{}),message:lastFailed?(last?"The latest device refresh failed. Showing the last successful snapshot.":"Device data is unavailable. Check DeviceManagementManagedDevices.Read.All application permission, admin consent, Azure credentials and Intune licensing."):""};
         })().finally(()=>{deviceJob=null;});return deviceJob;
     }
+    let nextMfaAttempt=0,mfaLast=null,mfaFailed=false,mfaJob=null;
+    async function mfa(){
+        if(!(await config()).mfaEnabled)return {enabled:false,message:"Enable MFA registration reporting in Microsoft controls."};
+        const result=()=>({enabled:true,available:!!mfaLast,stale:mfaFailed,...(mfaLast||{}),message:mfaFailed?(mfaLast?"Latest refresh failed. Showing the last successful MFA snapshot.":"MFA report unavailable. Check AuditLog.Read.All application permission, admin consent and tenant reporting licensing."):""});
+        if(nextMfaAttempt>clock())return result();
+        if(!mfaJob)mfaJob=(async()=>{nextMfaAttempt=clock()+300000;try{let url="/v1.0/reports/authenticationMethods/userRegistrationDetails",all=[],pages=0;const seen=new Set();while(url){if(++pages>100||seen.has(url)||all.length>100000)throw Error("MFA paging limit exceeded.");seen.add(url);const data=await graph(url);if(!Array.isArray(data.value))throw Error("Invalid MFA report.");all.push(...data.value);url=data["@odata.nextLink"];}mfaLast=summarizeMfa([...new Map(all.map(r=>[r.id,r])).values()],clock());mfaFailed=false;}catch{mfaFailed=true;nextMfaAttempt=clock()+60000;}return result();})().finally(()=>{mfaJob=null;});return mfaJob;
+    }
     function attach(app){const wrap=fn=>(req,res,next)=>Promise.resolve(fn(req,res)).catch(next),admin=(req,res,next)=>req.adminUser.role==="admin"?next():res.status(403).json({error:"Administrator access required."});
         app.get("/api/admin/microsoft-controls",admin,wrap(async(req,res)=>{const raw=await storage.read("status");res.json({settings:settings(JSON.parse(raw)),revision:revision(raw),credentialsReady:ready});}));
         app.put("/api/admin/microsoft-controls",admin,wrap(async(req,res)=>{
@@ -68,12 +77,13 @@ function create(storage,{env=process.env,request=global.fetch,clock=Date.now,cre
             const raw=await storage.read("status");if(req.body.revision!==revision(raw))return res.status(409).json({error:"Published data changed. Reload Microsoft controls and retry."});
             if(value.groupAccess){if(env.ADMIN_SSO_ENABLED!=="true")return res.status(400).json({error:"Enable Microsoft SSO on the server before enabling group access."});for(const id of [value.adminGroupId,value.editorGroupId].filter(Boolean)){const group=await graph("/v1.0/groups/"+id+"?$select=id,securityEnabled");if(group.id?.toLowerCase()!==id||group.securityEnabled!==true)return res.status(400).json({error:"Choose existing Entra security groups. Synced AD security groups are supported."});}}
             const data=JSON.parse(raw);data.microsoftAdmin=value;
-            await commit(storage,[update("status",raw,data)],req.adminUser,"microsoft.controls","admin",JSON.stringify(value));members.clear();nextDeviceAttempt=0;
+            await commit(storage,[update("status",raw,data)],req.adminUser,"microsoft.controls","admin",JSON.stringify(value));members.clear();nextDeviceAttempt=0;nextMfaAttempt=0;
             res.json({settings:value,revision:revision(JSON.stringify(data,null,2)+"\n"),credentialsReady:ready});
         }));
+        app.get("/api/admin/mfa-registration",admin,wrap(async(req,res)=>res.json(await mfa())));
         app.get("/api/admin/device-compliance",admin,wrap(async(req,res)=>res.json(await devices())));
     }
-    return {resolve,role,devices,attach,config};
+    return {resolve,role,devices,mfa,attach,config};
 }
 function forStorage(storage){if(!instances.has(storage))instances.set(storage,create(storage));return instances.get(storage);}
-module.exports={create,forStorage,settings,validate,summarize};
+module.exports={create,forStorage,settings,validate,summarize,summarizeMfa};

@@ -92,7 +92,7 @@ app.locals.storage = storage;
 require("./src/admin-api")(app, { statusFile: STATUS_FILE, monitor: healthMonitor, storage, availability, subscriptions, integrationHealth:async()=>{
     const status=JSON.parse(await storage.read("status"));
     const auditRaw=await storage.read("audit")||"[]";
-    return {subscriptions:subscriptions.snapshot(),sso:{...app.locals.ssoDiagnostics?.(),linkedAccounts:JSON.parse(await storage.read("users")||"[]").filter(u=>u.active&&u.entraObjectId).length},checkedAt:new Date().toISOString(),integrations:{...integrations.snapshot(),backup:await require("./ops/backup-health").backupHealth(process.env.SQL_BACKUP_HEALTH_FILE)},monitoring:healthMonitor.workerHealth(),automation:{...automation},checks:healthMonitor.details(status.services||[]),retention:{auditCount:JSON.parse(auditRaw).length,auditBytes:Buffer.byteLength(auditRaw),incidents:(status.incidents||[]).length,assessments:(status.microsoftAssessments||[]).length,incidentLimit:500,availabilityDays:400}};
+    return {subscriptions:subscriptions.snapshot(),sso:{...app.locals.ssoDiagnostics?.(),groupAccessEnabled:!!status.microsoftAdmin?.groupAccess},checkedAt:new Date().toISOString(),integrations:{...integrations.snapshot(),backup:await require("./ops/backup-health").backupHealth(process.env.SQL_BACKUP_HEALTH_FILE)},monitoring:healthMonitor.workerHealth(),automation:{...automation},checks:healthMonitor.details(status.services||[]),retention:{auditCount:JSON.parse(auditRaw).length,auditBytes:Buffer.byteLength(auditRaw),incidents:(status.incidents||[]).length,assessments:(status.microsoftAssessments||[]).length,incidentLimit:500,availabilityDays:400}};
 } });
 // Explicit URL mappings keep existing bookmarks and sign-in redirects stable.
 // Only these public assets are served; the project directory is never exposed.
@@ -107,7 +107,7 @@ const publicFiles = new Map([
     ["/admin/", "pages/admin/index.html"], ["/admin/index.html", "pages/admin/index.html"],
     ["/admin/style.css", "pages/admin/style.css"], ["/admin/app.js", "pages/admin/app.js"],
     ["/admin/management.js", "pages/admin/management.js"], ["/admin/microsoft.js", "pages/admin/microsoft.js"],
-    ["/admin/password.html", "pages/admin/password.html"], ["/admin/password.js", "pages/admin/password.js"]
+
 ]);
 app.get(/^\/admin$/, (req, res) => res.redirect(302, "/admin/"));
 app.use((req, res, next) => {

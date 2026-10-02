@@ -41,7 +41,7 @@ test("account invitations are sent once, only after persistence, with visible fa
   return failMail?{status:"failed",message:"Email could not be sent."}:{status:"accepted",message:"Accepted for delivery."};
  }};
  require("./transactional-fixture")(storage);
- const app=express();app.use(express.json());require("../src/user-auth")(app,{statusFile:"unused",key:"test-key-longer-than-24-characters",storage,welcomeMailer});
+ const app=express();app.use(express.json());require("../src/user-auth")(app,{allowLocalUsers:true,statusFile:"unused",key:"test-key-longer-than-24-characters",storage,welcomeMailer});
  app.use((error,req,res,next)=>res.status(500).json({error:"Save failed"}));
  const server=app.listen(0,"127.0.0.1");await new Promise(r=>server.once("listening",r));t.after(()=>new Promise(r=>server.close(r)));
  const base="http://127.0.0.1:"+server.address().port+"/api/admin/users";
@@ -73,7 +73,7 @@ test("deletion protects admins, revokes sessions and sends notifications only af
  const storage={read:async()=>raw,write:async(name,value)=>{if(failWrite)throw new Error("Unavailable");raw=value;}};
  require("./transactional-fixture")(storage);
  const app=express();app.use(express.json());
- require("../src/user-auth")(app,{statusFile:"unused",key:"bootstrap-key-at-least-24-characters",storage,welcomeMailer:{
+ require("../src/user-auth")(app,{allowLocalUsers:true,statusFile:"unused",key:"bootstrap-key-at-least-24-characters",storage,welcomeMailer:{
   configuration:()=>({ready:true}),send:async(user,password,event="created")=>{
    if(event==="deleted")assert.ok(!JSON.parse(raw).some(u=>u.id===user.id));
    if(event==="deactivated")assert.equal(JSON.parse(raw).find(u=>u.id===user.id).active,false);

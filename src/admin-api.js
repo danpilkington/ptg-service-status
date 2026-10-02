@@ -8,9 +8,9 @@ const states = new Set(["operational", "degraded", "advisory", "outage", "mainte
 const validText = (s, max) => typeof s === "string" && s.trim().length > 0 && s.length <= max;
 const uniqueItems = (items, limit) => Array.isArray(items) && items.length <= limit &&
     items.every(i => i && validText(i.id, 100)) && new Set(items.map(i => i.id)).size === items.length;
-module.exports = function attachAdmin(app, { statusFile, monitor, key = process.env.ADMIN_API_KEY, storage = createFileStorage(statusFile), availability = require("./availability").createAvailability(storage), welcomeMailer, integrationHealth, subscriptions }) {
+module.exports = function attachAdmin(app, { statusFile, monitor, key = process.env.ADMIN_API_KEY, storage = createFileStorage(statusFile), availability = require("./availability").createAvailability(storage), welcomeMailer, integrationHealth, subscriptions, allowLocalUsers = false }) {
     let writing = false;
-    require("./user-auth")(app, { statusFile, key, storage, welcomeMailer });
+    require("./user-auth")(app, { statusFile, key, storage, welcomeMailer, allowLocalUsers });
     require("./microsoft-admin").forStorage(storage).attach(app);
     const adminView=(value,user)=>{
         const result=health.redact(value);

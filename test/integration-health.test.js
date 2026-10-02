@@ -72,7 +72,7 @@ test("readiness requires valid storage and recent successful worker cycles",asyn
 
 test("integration endpoint is authenticated and administrator-only",async t=>{
  const express=require("express"),dir=await fs.mkdtemp(path.join(os.tmpdir(),"ptg-integration-api-")),file=path.join(dir,"status.json");await fs.writeFile(file,'{"services":[],"incidents":[],"maintenance":[]}');
- const app=express();app.use(express.json());require("../src/admin-api")(app,{statusFile:file,key:"integration-key-at-least-24-characters",integrationHealth:async()=>({integrations:{teams:{state:"healthy"}}}),welcomeMailer:{send:async()=>({status:"accepted"})}});
+ const app=express();app.use(express.json());require("../src/admin-api")(app,{allowLocalUsers:true,statusFile:file,key:"integration-key-at-least-24-characters",integrationHealth:async()=>({integrations:{teams:{state:"healthy"}}}),welcomeMailer:{send:async()=>({status:"accepted"})}});
  const server=app.listen(0,"127.0.0.1");await new Promise(r=>server.once("listening",r));
  t.after(async()=>{await new Promise(r=>server.close(r));for(const name of await fs.readdir(dir))await fs.unlink(path.join(dir,name));await fs.rmdir(dir);});
  const base="http://127.0.0.1:"+server.address().port+"/api/admin/",headers={Authorization:"Bearer integration-key-at-least-24-characters","Content-Type":"application/json"};

@@ -593,92 +593,19 @@
         if (!response.ok) throw new Error(result.error || "Unable to save account.");
         return result;
     }
-    function clearUserForm() {
-        editingUser = null; $("user-form").reset(); $("user-email").required = true; $("user-password").required = false;
-        $("user-editor-title").textContent = "Create user";
-    }
-    async function loadUsers() {
-        const { users, welcomeEmail } = await accountRequest("users");
-        $("welcome-email-help").textContent = welcomeEmail?.message || "Welcome email settings are unavailable. Restart the website server.";
-        $("users-list").replaceChildren();
-        for (const user of users) {
-            const row = text("article", "", "user-account");
-            row.append(text("strong", user.firstName + " " + user.lastName),
-                text("p", user.jobTitle), text("p", user.email || "No email address"),
-                text("p", user.username + " · " + (user.role === "admin" ? "Administrator" : "Editor") + " · " + (user.active ? "Enabled" : "Disabled")),
-                button("Edit account", () => {
-                    editingUser = user.id;
-                    $("user-email").value = user.email || ""; $("user-email").required = false;
-                    for (const field of ["username", "firstName", "lastName", "jobTitle", "role"]) $("user-" + field).value = user[field];
-                    $("user-active").checked = user.active; $("user-password").value = ""; $("user-password").required = false;
-                    $("user-editor-title").textContent = "Edit " + user.username; $("user-username").focus();
-                }));
-            if (user.id !== signedInUserId && !(user.active && user.role === "admin" && users.filter(item => item.active && item.role === "admin").length === 1)) {
-                const remove = button("Delete user", () => {
-                    if (!confirm("Permanently delete " + user.username + "? They will lose access immediately and receive an email notification if an email address is saved.")) return;
-                    run(async () => {
-                        const result = await accountRequest("users/" + encodeURIComponent(user.id), "DELETE");
-                        if (editingUser === user.id) clearUserForm();
-                        $("users-feedback").textContent = "Account deleted. " + result.accountEmail.message;
-                        $("users-feedback").classList.toggle("error", result.accountEmail.status !== "accepted");
-                        await loadUsers();
-                    });
-                });
-                remove.classList.add("delete-user"); row.append(remove);
-            }
-            if(user.active&&user.email)row.append(button("Send password link",()=>run(async()=>{
-                const result=await accountRequest("users/"+encodeURIComponent(user.id)+"/password-link","POST",{});
-                $("users-feedback").textContent=result.accountEmail.message;
-            })));
-            $("users-list").append(row);
-        }
-        if (!users.length) $("users-list").append(text("p", "No individual accounts yet. Create an administrator to get started."));
-    }
     async function loadAccount() {
         const { user } = await accountRequest("me");
         signedInUserId = user.id;
         const admin = user.role === "admin";
         accountRole=user.role;
         await loadIntegrations();
-        $("microsoft-controls-nav").hidden=!admin;$("device-compliance-nav").hidden=!admin;
+        $("microsoft-controls-nav").hidden=!admin;$("device-compliance-nav").hidden=!admin;$("mfa-registration-nav").hidden=!admin;
         if(admin)await microsoftViews.load();
         $("audit-nav").hidden=!admin;$("subscribers-nav").hidden=!admin;$("reviews-nav").hidden=!admin;
         $("publish").textContent=admin?"Publish changes":"Submit for approval";
-        $("manage-users").hidden = !admin; $("users-nav").hidden = !admin;
-        if (admin) await loadUsers();
         const selectedTab=document.querySelector("[data-admin-tab][aria-selected=true]");
         (selectedTab&&!selectedTab.hidden?selectedTab:document.querySelector("[data-admin-tab=admin-overview]")).click();
     }
-    $("login-form").addEventListener("submit", event => {
-        event.preventDefault();
-        run(async () => {
-            const result = await accountRequest("login", "POST", { username: $("login-username").value, password: $("login-password").value });
-            key = result.token; $("login-password").value = "";
-            await load(); await loadAccount();
-        });
-    });
-    $("user-form").addEventListener("submit", event => {
-        event.preventDefault();
-        run(async () => {
-            const body = {};
-            for (const field of ["username", "email", "firstName", "lastName", "jobTitle", "role", "password"]) body[field] = $("user-" + field).value;
-            body.active = $("user-active").checked;
-            try {
-                const saved = await accountRequest("users" + (editingUser ? "/" + encodeURIComponent(editingUser) : ""), editingUser ? "PUT" : "POST", body);
-                if (editingUser === signedInUserId && body.password) {
-                    const login = await accountRequest("login", "POST", { username: body.username, password: body.password });
-                    key = login.token;
-                }
-                clearUserForm();
-                const mail = saved.accountEmail || saved.welcomeEmail;
-                $("users-feedback").textContent = "Account saved." + (mail ? " " + mail.message : "");
-                $("users-feedback").classList.toggle("error", !!mail && ["failed", "unknown", "not_configured"].includes(mail.status));
-                await loadUsers();
-            } catch (error) { $("users-feedback").textContent = error.message; throw error; }
-        });
-    });
-    $("user-clear").addEventListener("click", clearUserForm);
-    $("users-refresh").addEventListener("click", () => run(loadUsers));
     $("connect-form").addEventListener("submit", event => {
         event.preventDefault(); key = $("admin-key").value;
         run(async () => { await load(); $("admin-key").value = ""; await loadAccount(); });
@@ -768,12 +695,12 @@
         if (hasUnsaved() && !confirm("Discard unpublished changes and disconnect?")) return;
         clearRecovery(); credentialEdits.clear();
         $("service-api-key").value="";$("service-api-auth").value="";
-        accountRequest("logout", "POST").catch(() => {}); clearUserForm(); $("users-list").replaceChildren(); $("users-feedback").textContent = ""; $("login-password").value = "";
+        accountRequest("logout", "POST").catch(() => {});
         clearManagementViews(); microsoftViews.clear(); key = ""; data = null; baseline = null; revision = ""; dirty = false; publicIssues = []; changedForms.clear();
         document.querySelector("[data-integration-panel]").hidden=true; $("integration-health").replaceChildren();
         $("editor").hidden = true; $("connection").hidden = false; $("admin-key").value = "";
         $("published").textContent = "Connect to load"; $("published").removeAttribute("datetime");
-        feedback("Signed out."); $("login-username").focus();
+        feedback("Signed out."); $("microsoft-sign-in").focus();
     });
     $("preview").addEventListener("click", () => {
         const container = $("preview-content"); container.replaceChildren();
@@ -953,7 +880,7 @@
             }
             if(result.sso){
                 const card=text("article","","integration-item");card.dataset.state=result.sso.enabled&&result.sso.tokenValidatorReady?"healthy":"error";
-                card.append(text("h4","Microsoft admin sign-in"),text("p",result.sso.enabled?"Enabled":"Disabled or incomplete configuration"),text("p",result.sso.tokenValidatorReady?"Token validator installed":"Token validator missing or unavailable"),text("p",(result.sso.linkedAccounts||0)+" enabled accounts linked"));
+                card.append(text("h4","Microsoft admin sign-in"),text("p",result.sso.enabled?"Enabled":"Disabled or incomplete configuration"),text("p",result.sso.tokenValidatorReady?"Token validator installed":"Token validator missing or unavailable"),text("p",result.sso.groupAccessEnabled?"Security group access enabled":"Configure security groups in Microsoft controls"));
                 if(result.sso.redirectUri)card.append(text("p","Callback: "+result.sso.redirectUri,"help"));
                 if(result.sso.lastSuccessAt)card.append(text("p","Last successful sign-in: "+format(result.sso.lastSuccessAt),"help"));
                 for(const failure of (result.sso.recentFailures||[]).slice(0,3))card.append(text("p",format(failure.at)+": "+failure.message+(failure.providerCodes?.length?" Microsoft codes: "+failure.providerCodes.join(", "):"")));
@@ -1081,14 +1008,6 @@
     });
     let accountRole = "editor", auditOffset = 0, latestReport = null;
     $("report-month").value = new Date().toISOString().slice(0,7);
-    $("password-request-form").addEventListener("submit",async event=>{
-        event.preventDefault();
-        const submit=event.target.querySelector("button");submit.disabled=true;
-        try{
-            const result=await accountRequest("password/request","POST",{username:$("reset-username").value});
-            $("reset-feedback").textContent=result.message;
-        }catch(error){$("reset-feedback").textContent=error.message;}finally{submit.disabled=false;}
-    });
     async function loadApprovals(){
         const result=await accountRequest("approvals");$("approvals-list").replaceChildren();
         for(const item of result.items){

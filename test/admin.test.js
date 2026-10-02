@@ -14,7 +14,7 @@ test("publishing validates, authenticates, persists and detects conflicts", asyn
     const original = { publishedAt: "2026-09-01T00:00:00Z", services: [{id:"vpn", name:"VPN",status:"operational"}], incidents:[],maintenance:[],supportUrls:{vpn:"https://example.com/support"} };
     await fs.writeFile(file, JSON.stringify(original));
     const key = "test-only-key-for-publishing-12345";
-    const app = express(); app.use(express.json()); attach(app,{statusFile:file,key});
+    const app = express(); app.use(express.json()); attach(app,{allowLocalUsers:true,statusFile:file,key});
     const server = app.listen(0,"127.0.0.1");
     await new Promise(resolve=>server.once("listening",resolve));
     t.after(async()=>{await new Promise(resolve=>server.close(resolve)); await fs.unlink(file); for(const sidecar of ["audit.json","approvals.json","availability.json"])await fs.unlink(path.join(dir,sidecar)).catch(e=>{if(e.code!=="ENOENT")throw e;});await fs.rmdir(dir);});
@@ -98,9 +98,9 @@ test("public pages work, private files are blocked, and local status reaches API
     await new Promise(resolve=>server.once("listening",resolve));
     t.after(()=>new Promise(resolve=>server.close(resolve)));
     const base="http://127.0.0.1:"+server.address().port;
-    for(const route of ["/","/index.html","/info.html","/maintenance.html","/subscriptions.html","/app.js","/public-ui.js","/subscriptions-ui.js","/admin/","/admin/index.html","/admin/password.html","/style.css","/admin/style.css","/admin/app.js","/admin/password.js","/admin/management.js"]) assert.equal((await fetch(base+route)).status,200,route);
+    for(const route of ["/","/index.html","/info.html","/maintenance.html","/subscriptions.html","/app.js","/public-ui.js","/subscriptions-ui.js","/admin/","/admin/index.html","/style.css","/admin/style.css","/admin/app.js","/admin/management.js"]) assert.equal((await fetch(base+route)).status,200,route);
     for(const route of ["/.env","/server.js","/admin-api.js","/package.json","/node_modules/express/package.json","/status.json","/users.json","/storage.js","/database/setup.sql","/database-setup.js","/pages/status/index.html","/pages/admin/index.html"]) assert.equal((await fetch(base+route)).status,404,route);
-    assert.equal((await fetch(base+"/api/admin/status")).status,503);
+    assert.equal((await fetch(base+"/api/admin/status")).status,401);
     const result=await (await fetch(base+"/api/status")).json();
     assert.equal(result.microsoftAvailable,false);
     assert.equal(result.services.length,new Set(result.services.map(s=>s.id)).size);
@@ -113,7 +113,7 @@ test("service creation, edits and removal preserve linked history", async t => {
     const file = path.join(dir,"status.json");
     await fs.writeFile(file, JSON.stringify({services:[],incidents:[],maintenance:[]}));
     const key="catalog-test-key-at-least-24-characters";
-    const app=express(); app.use(express.json()); attach(app,{statusFile:file,key});
+    const app=express(); app.use(express.json()); attach(app,{allowLocalUsers:true,statusFile:file,key});
     const server=app.listen(0,"127.0.0.1");
     await new Promise(resolve=>server.once("listening",resolve));
     t.after(async()=>{await new Promise(resolve=>server.close(resolve));await fs.unlink(file);for(const sidecar of ["audit.json","approvals.json","availability.json"])await fs.unlink(path.join(dir,sidecar)).catch(e=>{if(e.code!=="ENOENT")throw e;});await fs.rmdir(dir);});
@@ -154,7 +154,7 @@ test("service creation, edits and removal preserve linked history", async t => {
 test("dashboard refresh setting validates, persists, audits and detects stale edits",async t=>{
     const dir=await fs.mkdtemp(path.join(os.tmpdir(),"ptg-refresh-")),file=path.join(dir,"status.json");
     await fs.writeFile(file,JSON.stringify({services:[],incidents:[],maintenance:[]}));
-    const app=express();app.use(express.json());const key="refresh-test-key-at-least-24-characters";attach(app,{statusFile:file,key});
+    const app=express();app.use(express.json());const key="refresh-test-key-at-least-24-characters";attach(app,{allowLocalUsers:true,statusFile:file,key});
     const server=app.listen(0,"127.0.0.1");await new Promise(r=>server.once("listening",r));
     t.after(async()=>{await new Promise(r=>server.close(r));for(const name of ["status.json","audit.json"])await fs.unlink(path.join(dir,name)).catch(()=>{});await fs.rmdir(dir);});
     const base="http://127.0.0.1:"+server.address().port;
