@@ -1,7 +1,7 @@
 "use strict";
 const {test}=require("node:test"),assert=require("node:assert/strict");
-const {affectedServices,parseFavourites}=require("../dashboard-summary");
-const {attachPublicAvailability}=require("../public-availability");
+const {affectedServices,parseFavourites}=require("../assets/dashboard-summary");
+const {attachPublicAvailability}=require("../src/public-availability");
 
 test("affected overview separates provider notices, confirmed impact, unknown monitoring and resolved history",()=>{
  const now=Date.parse("2026-10-01T10:00:00Z");
@@ -35,7 +35,7 @@ test("public availability exposes only aggregates for an existing service and sa
 });
 
 test("successful probe timestamp survives target failures and monitor errors without inventing a success",()=>{
- const {advance}=require("../health-monitor");let state=advance(null,{ok:false,message:"Connection refused"},1);assert.equal(state.lastSuccessfulCheckAt,null);
+ const {advance}=require("../src/health-monitor");let state=advance(null,{ok:false,message:"Connection refused"},1);assert.equal(state.lastSuccessfulCheckAt,null);
  state=advance(state,{ok:true},2);assert.equal(state.lastSuccessfulCheckAt,new Date(2).toISOString());state=advance(state,{ok:false},3);assert.equal(state.lastSuccessfulCheckAt,new Date(2).toISOString());
  state=advance(state,{ok:false,kind:"monitor-error"},4);assert.equal(state.lastSuccessfulCheckAt,new Date(2).toISOString());
 });

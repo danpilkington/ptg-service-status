@@ -1,0 +1,27 @@
+Optional Microsoft admin sign-in
+
+Uses existing AZURE_TENANT_ID, AZURE_CLIENT_ID and AZURE_CLIENT_SECRET.
+1. In that Azure app registration, add a Web redirect URI:
+   https://status.progressive.technology/api/admin/sso/callback
+2. Set ADMIN_SSO_REDIRECT_URI to the exact registered HTTPS URI and
+   ADMIN_SSO_ENABLED=true in the server environment, then restart.
+3. In admin Users, edit each approved account and enter its Microsoft Entra
+   user Object ID from Entra ID > Users (not the application's Object ID).
+   Enable the account and select its existing Administrator or Editor role.
+
+Tenant membership or an email match never grants access. No automatic account
+creation occurs. Only enabled, explicitly linked users can sign in. Existing
+roles, publishing approval rules and account revocation checks still apply.
+Password sign-in and recovery key access remain available.
+Removing the link revokes sessions, as does disabling or deleting the user.
+
+The optional button is hidden until SSO is configured. HTTPS is required.
+No additional Graph permissions are needed. SSO does not require completion
+of local password setup. Sessions expire after eight hours or server restart.
+
+The flow uses PKCE, browser-bound state, nonce and signed ID token validation
+(tenant, issuer, audience and expiry). Server credentials never go to the
+browser. Session handoff uses a one-use secure HttpOnly cookie, not URL tokens.
+
+Azure sign-in must be tested after app registration and server configuration.
+Reference: https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow

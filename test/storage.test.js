@@ -6,7 +6,7 @@ const fs = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
 const express = require("express");
-const { createFileStorage, createStorage, sqlConfig, revision } = require("../storage");
+const { createFileStorage, createStorage, sqlConfig, revision } = require("../src/storage");
 const { migrate, activate } = require("../database-setup");
 
 test("file storage rejects racing writes and preserves the winning snapshot", async t => {
@@ -42,12 +42,12 @@ test("publishing, accounts and health monitoring use injected storage without lo
         if(revision(docs[name])!==expected){const e=new Error("Conflict");e.status=409;throw e;}docs[name]=content;
     }};
     require("./transactional-fixture")(storage);
-    const initial=JSON.parse(docs.status); initial.services[0].monitor=require("../health-monitor").validate(initial.services[0].monitor); docs.status=JSON.stringify(initial);
-    const monitor=require("../health-monitor").createMonitor("nonexistent",async()=>({ok:true,message:"OK",latencyMs:1}),storage);
+    const initial=JSON.parse(docs.status); initial.services[0].monitor=require("../src/health-monitor").validate(initial.services[0].monitor); docs.status=JSON.stringify(initial);
+    const monitor=require("../src/health-monitor").createMonitor("nonexistent",async()=>({ok:true,message:"OK",latencyMs:1}),storage);
     await monitor.tick();
     assert.ok(monitor.details(JSON.parse(docs.status).services).vpn);
     const app=express();app.use(express.json());
-    require("../admin-api")(app,{statusFile:"nonexistent",key:"storage-test-key-with-more-than-24-characters",storage,monitor});
+    require("../src/admin-api")(app,{statusFile:"nonexistent",key:"storage-test-key-with-more-than-24-characters",storage,monitor});
     const server=app.listen(0,"127.0.0.1");await new Promise(r=>server.once("listening",r));
     t.after(()=>new Promise(r=>server.close(r)));
     const base="http://127.0.0.1:"+server.address().port+"/api/admin/";

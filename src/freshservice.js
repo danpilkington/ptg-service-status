@@ -17,7 +17,7 @@ function escapeHtml(value){return String(value??"").replaceAll("&","&amp;").repl
 function serviceKey(service){return (service.source||"PTG")+":"+service.id;}
 function createFreshserviceNotifier(options={}) {
  const env=options.env||process.env,config=configuration(env),request=options.fetch||globalThis.fetch;
- const stateFile=options.stateFile||env.FRESHSERVICE_STATE_FILE||path.join(__dirname,"freshservice-state.json");let statePromise,queue=Promise.resolve();
+ const stateFile=options.stateFile||env.FRESHSERVICE_STATE_FILE||path.join(require("node:path").resolve(__dirname, ".."),"freshservice-state.json");let statePromise,queue=Promise.resolve();
  async function loadState(){if(!statePromise)statePromise=fs.readFile(stateFile,"utf8").then(JSON.parse).catch(error=>{if(error.code==="ENOENT")return {version:1,services:{}};throw new Error("Freshservice state could not be read: "+error.message);});return statePromise;}
  async function saveState(state){const temporary=stateFile+"."+randomUUID()+".tmp";await fs.mkdir(path.dirname(stateFile),{recursive:true});try{await fs.writeFile(temporary,JSON.stringify(state,null,2)+"\n",{flag:"wx",mode:0o600});await fs.rename(temporary,stateFile);}finally{await fs.unlink(temporary).catch(()=>{});}}
  async function createTicket(service){

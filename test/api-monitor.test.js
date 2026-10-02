@@ -1,5 +1,5 @@
 "use strict";
-const {test}=require("node:test"),assert=require("node:assert/strict"),health=require("../health-monitor");
+const {test}=require("node:test"),assert=require("node:assert/strict"),health=require("../src/health-monitor");
 test("HTTP checks enforce status, response content and network boundaries",async t=>{
  const os=require("node:os"),http=require("node:http");
  const ip=Object.values(os.networkInterfaces()).flat().find(i=>i.family==="IPv4"&&health.allowed(i.address))?.address;
@@ -18,7 +18,7 @@ test("credentials are encrypted on disk, redacted in APIs and available only to 
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),"ptg-api-check-")),file=path.join(dir,"status.json");
  await fs.writeFile(file,JSON.stringify({services:[{id:"api",name:"API",status:"unknown"}],incidents:[],maintenance:[]}));
  const monitor=health.createMonitor(file,async config=>{assert.equal(config.apiKey,"dummy-test-api-key");assert.equal(config.authorization,"Basic dummy-test-auth");return {ok:true,message:"Passed",latencyMs:1};});
- const app=express();app.use(express.json());require("../admin-api")(app,{statusFile:file,key:"test-publishing-key-long-enough",monitor});
+ const app=express();app.use(express.json());require("../src/admin-api")(app,{statusFile:file,key:"test-publishing-key-long-enough",monitor});
  const server=app.listen(0,"127.0.0.1");await new Promise(r=>server.once("listening",r));
  t.after(async()=>{await new Promise(r=>server.close(r));await fs.unlink(file);for(const sidecar of ["audit.json","approvals.json","availability.json"])await fs.unlink(path.join(dir,sidecar)).catch(e=>{if(e.code!=="ENOENT")throw e;});await fs.rmdir(dir);});
  const url="http://127.0.0.1:"+server.address().port+"/api/admin/status",headers={Authorization:"Bearer test-publishing-key-long-enough","Content-Type":"application/json"};

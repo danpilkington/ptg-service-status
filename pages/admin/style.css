@@ -396,3 +396,22 @@ form>button{margin-top:16px}
 .table-scroll th{background:#eef4fa}
 
 .integration-panel{margin:1.25rem 0}.integration-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1rem}.integration-item{padding:1rem;border:1px solid #d9dfe4;border-radius:12px;overflow-wrap:anywhere}.integration-item h4{margin:0 0 .5rem}.integration-item p{margin:.4rem 0}.integration-item[data-state="error"],.integration-item[data-state="stale"]{border-left:4px solid #b45309}.integration-item[data-state="healthy"]{border-left:4px solid #16804a}
+/* Mobile publishing workspace */
+@media(max-width:650px){
+    .modern-admin .admin-rail{position:sticky;top:0;z-index:20;background:#fff;box-shadow:0 3px 12px #10182014;border-radius:8px;padding:8px}
+    .modern-admin .admin-tabs{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:6px;padding-bottom:4px;scroll-snap-type:x proximity}
+    .modern-admin .admin-tabs button{flex:0 0 auto;width:auto;min-height:44px;white-space:nowrap;padding:10px 14px;scroll-snap-align:start}
+    .modern-admin .admin-rail .rail-note{display:none}
+    .modern-admin input,.modern-admin select,.modern-admin textarea{font-size:16px;min-width:0;max-width:100%;box-sizing:border-box}
+    .modern-admin .admin-content,.modern-admin .editor-pane,.modern-admin .user-form-grid,.modern-admin .service-editor{min-width:0}
+    .modern-admin .split,.modern-admin .user-editor-layout,.modern-admin .date-fields{grid-template-columns:1fr}
+    .modern-admin .actions button,.modern-admin .quick-control-grid button{min-height:44px}
+    .modern-admin .template-toolbar{display:flex;flex-direction:column;align-items:stretch;gap:10px}
+    .modern-admin .publish-bar{position:sticky;bottom:0;z-index:15;padding:12px;padding-bottom:calc(12px + env(safe-area-inset-bottom));box-shadow:0 -4px 18px #1018201a;border-radius:12px 12px 0 0;background:#fff}
+    .modern-admin .publish-bar .actions{display:flex;flex-wrap:wrap;width:100%;gap:8px}
+    .modern-admin .publish-bar .actions button{flex:1 1 130px}
+    .modern-admin .section{scroll-margin-top:80px}
+    .modern-admin dialog{width:calc(100% - 24px);max-width:none;max-height:calc(100dvh - 24px);padding:16px;box-sizing:border-box}
+}
+.dependency-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;max-height:230px;overflow:auto;padding:8px 0}.dependency-options label{display:flex;gap:8px;align-items:center;margin:0!important;font-size:13px}.dependency-options input[type=checkbox]{width:auto;flex:none}.subscriber-controls{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:20px 0}.subscriber-controls label{flex:1;min-width:180px}.subscriber-row,.incident-review-row{border:1px solid var(--border);border-radius:10px;padding:16px;margin:12px 0;overflow-wrap:anywhere}.subscriber-row h3,.incident-review-row h3{margin:0;font-size:16px}.subscriber-row .actions{margin-top:12px}.review-action-row{display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px;padding:16px;border:1px solid var(--border);border-radius:10px;margin:12px 0}.review-action-row label{margin:0}.review-action-row label:has(input[type=checkbox]){display:flex;align-items:center;gap:8px}.review-action-row input[type=checkbox]{width:auto}.review-action-row button{align-self:end}#incident-review-editor{margin-top:24px;padding-top:20px;border-top:1px solid var(--border)}#review-incident-summary{line-height:1.6}#review-timeline p{padding:12px;background:#f3f7fa;border-radius:8px;white-space:pre-wrap}
+@media(max-width:650px){.dependency-options,.review-action-row{grid-template-columns:1fr}.subscriber-controls{align-items:stretch;flex-direction:column}.subscriber-controls label{width:100%;min-width:0}.subscriber-row .actions button{flex:1 1 140px}}

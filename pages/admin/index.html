@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="theme-color" content="#101820">
+    <title>Administration | PTG Service Status</title>
+    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="/admin/style.css">
+    <script>
+            // Compatibility fallback for contexts where crypto.randomUUID is unavailable.
+            (() => {
+              if (!globalThis.crypto) globalThis.crypto = {};
+              if (typeof globalThis.crypto.randomUUID !== "function") {
+                globalThis.crypto.randomUUID = function () {
+                  const bytes = new Uint8Array(16);
+                  if (typeof globalThis.crypto.getRandomValues === "function") {
+                    globalThis.crypto.getRandomValues(bytes);
+                  } else {
+                    for (let i = 0; i < bytes.length; i += 1) {
+                      bytes[i] = Math.floor(Math.random() * 256);
+                    }
+                  }
+                  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+                  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+                  const hex = Array.from(bytes, byte => byte.toString(16).padStart(2, "0"));
+                  return [
+                    hex.slice(0, 4).join(""),
+                    hex.slice(4, 6).join(""),
+                    hex.slice(6, 8).join(""),
+                    hex.slice(8, 10).join(""),
+                    hex.slice(10, 16).join("")
+                  ].join("-");
+                };
+              }
+            })();
+    </script>
+    <script src="/service-metadata.js" defer></script>
+    <script src="/admin/management.js" defer></script>
+    <script src="/admin/app.js" defer></script>
+</head>
+<body class="admin-page modern-admin">
+    <a class="skip" href="#main">Skip to administration</a>
+    <header>
+        <div class="wrap head">
+            <nav aria-label="Administration navigation">
+                <a class="brand" href="/" aria-label="PTG Service Status home"><img class="logo" src="https://progressive-technology.co.uk/wp-content/themes/jupiter-child/assets/img/logo.svg" alt="Progressive Technology Group"></a>
+                <div class="nav-links"><a class="portal" href="/">View service status ↗</a></div>
+            </nav>
+            <div class="hero"><div class="eyebrow">service administration</div><h1>Status administration.</h1><p>Manage availability, keep colleagues informed, and review every change before it goes live.</p></div>
+        </div>
+    </header>
+    <main id="main" class="wrap admin-main">
+        <section class="overall workspace-summary" aria-labelledby="workspace-title">
+            <div class="status-main"><div class="check" aria-hidden="true">⚙</div><div><span class="label">Publishing workspace</span><h2 id="workspace-title">Service status control</h2><p>Review your changes, then publish them to the live status page.</p></div></div>
+            <div class="updated"><small>Last published</small><time id="published">Connect to load</time></div>
+        </section>
+        <p id="feedback" class="feedback" role="status" aria-live="polite">Sign in with your individual account to manage service status.</p>
+        <section id="connection" class="panel" aria-labelledby="connection-title">
+            <div class="connection-heading"><p class="kicker">Your workspace</p><h2 id="connection-title">IT Ops Individual Sign In</h2><p class="help">If you believe you should have access and do not hold an account, please contact the IT Support team.</p></div>
+            <form id="login-form">
+                <label for="login-username">user.name</label><input id="login-username" placeholder="Enter your username" autocomplete="username" maxlength="100" required>
+                <label for="login-password">password</label><input id="login-password" type="password" placeholder="Enter your password" autocomplete="current-password" maxlength="256" required>
+                <div class="actions"><button type="submit">Verify & Sign In</button><button id="microsoft-sign-in" type="button" hidden>Sign in with Microsoft</button></div>
+            </form>
+            <details><summary>Forgot your password?</summary><form id="password-request-form"><label for="reset-username">user.name</label><input id="reset-username" maxlength="100" placeholder="Enter your username" autocomplete="username" required><button type="submit">Email me a reset link</button><p id="reset-feedback" role="status"></p></form></details>
+            <details><summary>Administrator key access</summary><p class="help">Use the backup key to recover access.</p>
+            <form id="connect-form"><label for="admin-key"></label><div class="connect-row"><input id="admin-key" type="password" required autocomplete="off" placeholder="Enter your admin key"><button type="submit">Connect</button></div><p class="help">This key is authenticated via our OP Database</p></form></details>
+        </section>
+
+        <div id="editor" hidden>
+            <section id="draft-recovery" class="panel" hidden aria-labelledby="draft-recovery-title">
+                <h2 id="draft-recovery-title">Recover your draft</h2><p id="draft-recovery-message"></p>
+                <div class="actions"><button id="restore-draft" type="button">Restore draft</button><button id="download-draft" type="button" class="secondary">Download draft</button><button id="discard-draft" type="button" class="secondary">Discard saved draft</button></div>
+            </section>
+            <p id="draft-storage" class="help" role="status">Unpublished edits are saved in this browser. The admin key is never saved.</p>
+
+            <div class="admin-shell workspace-layout">
+                <aside class="admin-rail" aria-label="Administration sections">
+                    <p class="kicker">Workspace</p>
+                    <div class="admin-tabs" role="tablist" aria-label="Administration sections">
+                        <button type="button" role="tab" aria-selected="true" aria-controls="admin-overview" data-admin-tab="admin-overview">Overview</button>
+                        <button type="button" role="tab" aria-selected="false" aria-controls="manage-services" data-admin-tab="manage-services">Service health</button>
+                        <button type="button" role="tab" aria-selected="false" aria-controls="manage-incidents" data-admin-tab="manage-incidents">Incidents &amp; updates</button>
+                        <button type="button" role="tab" aria-selected="false" aria-controls="manage-maintenance" data-admin-tab="manage-maintenance">Maintenance</button>
+                        <button type="button" role="tab" aria-selected="false" aria-controls="manage-microsoft" data-admin-tab="manage-microsoft">Microsoft impact</button>
+                        <button type="button" role="tab" aria-selected="false" aria-controls="manage-announcement" data-admin-tab="manage-announcement">Announcement</button>
+                        <button type="button" role="tab" aria-selected="false" aria-controls="manage-approvals" data-admin-tab="manage-approvals">Approvals</button>
+                        <button type="button" role="tab" aria-selected="false" aria-controls="availability-reports" data-admin-tab="availability-reports">Availability reports</button>
+                        <button id="subscribers-nav" type="button" role="tab" aria-selected="false" aria-controls="manage-subscribers" data-admin-tab="manage-subscribers" hidden>Subscribers</button><button id="reviews-nav" type="button" role="tab" aria-selected="false" aria-controls="incident-reviews" data-admin-tab="incident-reviews" hidden>Incident reviews</button>
+                        <button id="audit-nav" type="button" role="tab" aria-selected="false" aria-controls="audit-history" data-admin-tab="audit-history" hidden>Audit history</button>
+                        <button id="users-nav" type="button" role="tab" aria-selected="false" aria-controls="manage-users" data-admin-tab="manage-users" hidden>Users</button>
+                        <button type="button" role="tab" aria-selected="false" aria-controls="review-changes" data-admin-tab="review-changes">Review changes <span id="change-count">0</span></button>
+                    </div>
+                    <div class="rail-note"><strong>Draft first. Publish once.</strong><p>Changes stay private until you publish.</p><button id="export-status" class="secondary" type="button">Download published backup</button></div>
+                </aside>
+
+                <div class="admin-content">
+                    <section id="admin-overview" class="section control-centre" aria-labelledby="control-centre-title">
+                        <div class="control-centre-heading"><div><p class="kicker">Operations overview</p><h2 id="control-centre-title">Status control centre</h2><p>Current service health, communications and publishing activity in one place.</p></div><span id="dashboard-live-state" class="control-live-state">Live workspace</span></div>
+
+                        <div class="metrics control-metrics" aria-label="Current status totals">
+                            <button class="metric control-metric" type="button" data-open-admin-tab="manage-services"><strong id="service-total">0</strong><span>PTG-managed services</span></button>
+                            <button class="metric control-metric" type="button" data-open-admin-tab="manage-incidents"><strong id="incident-total">0</strong><span>Active incidents</span></button>
+                            <button class="metric control-metric" type="button" data-open-admin-tab="manage-maintenance"><strong id="maintenance-total">0</strong><span>Maintenance notices</span></button>
+                            <button class="metric control-metric" type="button" data-open-admin-tab="review-changes"><strong id="save-state">Published</strong><span>Workspace state</span></button>
+                        </div>
+
+                        <section class="control-card integration-panel" aria-labelledby="integration-title" data-integration-panel hidden>
+                            <div class="control-card-heading"><div><p class="kicker">Automation &amp; recovery</p><h3 id="integration-title">Integration health</h3></div><button id="refresh-integrations" type="button" class="secondary">Refresh health</button></div>
+                            <p id="integration-feedback" role="status">Loading integration health…</p>
+                            <div id="integration-health" class="integration-grid"></div>
+                            <p id="integration-capacity" class="help"></p>
+                            <p class="help">Last event records an alert, ticket or recovery action. A successful check with no changes does not send a notification. Health timestamps reset when the server restarts.</p>
+                            <p class="help">Full recovery requires storage, notification state and protected host configuration. Published backup downloads contain status content only. See RECOVERY.md in the project for retention and restore procedures.</p>
+                        </section>
+                        <div class="control-grid">
+                            <article class="control-card">
+                                <div class="control-card-heading"><div><p class="kicker">Availability</p><h3>Service health</h3></div><button class="secondary compact-action" type="button" data-open-admin-tab="manage-services">Manage</button></div>
+                                <dl class="health-breakdown">
+                                    <div class="health-row operational"><dt>Operational</dt><dd id="dashboard-operational">0</dd></div>
+                                    <div class="health-row affected"><dt>Needs attention</dt><dd id="dashboard-affected">0</dd></div>
+                                    <div class="health-row unknown"><dt>Status unavailable</dt><dd id="dashboard-unknown">0</dd></div>
+                                </dl>
+                            </article>
+
+                            <article class="control-card">
+                                <div class="control-card-heading"><div><p class="kicker">Communications</p><h3>Public messaging</h3></div><button class="secondary compact-action" type="button" data-open-admin-tab="manage-announcement">Manage</button></div>
+                                <p id="dashboard-announcement" class="control-primary">No site-wide announcement</p>
+                                <p id="dashboard-announcement-detail" class="control-detail">The public banner is currently clear.</p>
+                            </article>
+
+                            <article class="control-card">
+                                <div class="control-card-heading"><div><p class="kicker">Incident response</p><h3>Current activity</h3></div><button class="secondary compact-action" type="button" data-open-admin-tab="manage-incidents">Open incidents</button></div>
+                                <p id="dashboard-incident-summary" class="control-primary">No active incidents</p>
+                                <p id="dashboard-incident-detail" class="control-detail">There are no active PTG incident notices.</p>
+                            </article>
+
+                            <article class="control-card">
+                                <div class="control-card-heading"><div><p class="kicker">Planned work</p><h3>Maintenance window</h3></div><button class="secondary compact-action" type="button" data-open-admin-tab="manage-maintenance">Schedule</button></div>
+                                <p id="dashboard-maintenance-summary" class="control-primary">No upcoming maintenance</p>
+                                <p id="dashboard-maintenance-detail" class="control-detail">No scheduled window is currently active or upcoming.</p>
+                            </article>
+
+                            <section class="attention-panel control-attention" aria-labelledby="attention-title"><div><p class="kicker">Action queue</p><h3 id="attention-title">Needs attention</h3></div><div id="attention-items"></div></section>
+
+                            <article class="control-card control-publishing">
+                                <div><p class="kicker">Publishing</p><h3>Workspace activity</h3></div>
+                                <p class="control-primary"><strong id="dashboard-change-total">0</strong> staged changes</p>
+                                <p class="control-detail">Last published <span id="dashboard-published">Not set</span></p>
+                                <div class="actions"><button class="secondary" type="button" data-open-admin-tab="review-changes">Review draft</button><button type="button" data-open-admin-tab="manage-services">Update services</button></div>
+                            </article>
+
+                            <article class="control-card control-shortcuts">
+                                <div><p class="kicker">Quick actions</p><h3>Open a control</h3></div>
+                                <div class="quick-control-grid"><button type="button" data-open-admin-tab="manage-incidents">Create incident</button><button type="button" data-open-admin-tab="manage-maintenance">Schedule maintenance</button><button type="button" data-open-admin-tab="manage-announcement">Post announcement</button><button class="secondary" type="button" data-open-admin-tab="manage-microsoft">Assess Microsoft impact</button></div>
+                            </article>
+                        </div>
+                    </section>
+
+                    <section id="manage-services" class="section" aria-labelledby="services-title">
+                        <div class="section-head"><div><p class="kicker">Workplace technology</p><h2 id="services-title">Service health</h2><p>Set PTG service availability. Microsoft cloud health is managed automatically.</p></div><div class="actions"><span class="count">PTG managed</span><button id="add-service" type="button">Add service</button></div></div>
+                        <div class="bulk-toolbar"><div><strong>Update multiple services</strong><p class="help">Select services, choose a status, then stage the change.</p></div><div class="actions"><button id="select-all-services" class="secondary" type="button">Select all</button><label class="inline-label" for="bulk-status">Status<select id="bulk-status"><option value="operational">Operational</option><option value="degraded">Degraded performance</option><option value="advisory">Service advisory</option><option value="outage">Service outage</option><option value="maintenance">Maintenance</option><option value="unknown">Status unavailable</option></select></label><button id="apply-bulk" type="button">Stage selected</button></div></div>
+                        <div id="services" class="services"></div>
+                    </section>
+
+                    <div class="notice-workspace">
+                        <section id="manage-incidents" class="section panel" aria-labelledby="incidents-title">
+                            <p class="kicker">Communications</p><h2 id="incidents-title">Incident notices</h2><p class="help">Edit a published notice, add an update, or correct an existing timeline entry.</p>
+                            <div class="notice-layout">
+                                <div><div class="list-toolbar"><label for="incident-search">Find an incident<input id="incident-search" type="search" placeholder="Search title or service"></label><label for="incident-filter">Stage<select id="incident-filter"><option value="all">All stages</option><option value="investigating">Investigating</option><option value="identified">Identified</option><option value="monitoring">Monitoring</option><option value="resolved">Resolved</option></select></label></div><div id="incidents"></div></div>
+                                <div class="editor-pane">
+                                    <h3 id="incident-editor-title">Create an incident</h3>
+                                    <div class="template-toolbar"><label for="incident-template">Template<select id="incident-template"><option value="outage">Service unavailable</option><option value="degraded">Slow or intermittent service</option><option value="signin">Sign-in problem</option><option value="network">Network connectivity</option><option value="identified">Cause identified</option><option value="monitoring">Recovery monitoring</option><option value="resolved">Service restored</option></select></label><button id="use-template" type="button" class="secondary">Use template</button></div>
+                                    <form id="incident-form" novalidate>
+                                        <label for="incident-service">Affected service</label><select id="incident-service" required></select>
+                                        <label for="incident-title">Incident title</label><input id="incident-title" type="text" maxlength="120" required>
+                                        <label for="incident-message">Public description</label><textarea id="incident-message" rows="5" maxlength="5000" required></textarea>
+                                        <label for="incident-phase">Stage</label><select id="incident-phase"><option value="investigating">Investigating</option><option value="identified">Identified</option><option value="monitoring">Monitoring</option><option value="resolved">Resolved</option></select>
+                                        <label for="incident-impact">PTG impact</label><select id="incident-impact"><option value="unknown">Impact not confirmed</option><option value="confirmed">Affecting PTG</option><option value="not-affected">No PTG impact confirmed</option></select>
+                                        <label for="incident-workaround">Workaround</label><textarea id="incident-workaround" rows="3" maxlength="3000"></textarea>
+                                        <label for="incident-next-update">Next update</label><input id="incident-next-update" type="datetime-local">
+                                        <div class="actions"><button type="button" class="secondary" data-next-minutes="30">In 30 minutes</button><button type="button" class="secondary" data-next-minutes="60">In 1 hour</button></div>
+                                        <div id="update-note-field" hidden><label for="incident-update">New timeline update</label><textarea id="incident-update" rows="4" maxlength="5000"></textarea></div>
+                                        <div class="actions"><button id="incident-save" type="submit">Add incident to draft</button><button id="incident-cancel" class="secondary" type="button">Clear form</button></div>
+                                    </form>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section id="manage-maintenance" class="section panel" aria-labelledby="maintenance-heading">
+                            <p class="kicker">Planned work</p><h2 id="maintenance-heading">Maintenance notices</h2>
+                            <div class="notice-layout">
+                                <div><p class="help">Edit a window or its expected impact without recreating the notice.</p><div id="maintenance"></div></div>
+                                <div class="editor-pane">
+                                    <h3 id="maintenance-editor-title">Schedule maintenance</h3>
+                                    <form id="maintenance-form" novalidate>
+                                        <label for="maintenance-service">Affected service</label><select id="maintenance-service" required></select>
+                                        <label for="maintenance-title">Title</label><input id="maintenance-title" type="text" maxlength="120" required>
+                                        <label for="maintenance-message">Details and expected impact</label><textarea id="maintenance-message" rows="5" maxlength="5000" required></textarea>
+                                        <label for="maintenance-start">Starts</label><input id="maintenance-start" type="datetime-local" required>
+                                        <label for="maintenance-end">Ends</label><input id="maintenance-end" type="datetime-local" required>
+                                        <label class="checkbox-label" for="maintenance-auto"><input id="maintenance-auto" type="checkbox"> Automatically show maintenance status during this window</label>
+                                        <div class="actions"><button id="maintenance-save" type="submit">Add maintenance to draft</button><button id="maintenance-cancel" class="secondary" type="button">Clear form</button></div>
+                                    </form>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+
+                    <section id="manage-microsoft" class="section panel" aria-labelledby="microsoft-title">
+                        <p class="kicker">Local relevance</p><h2 id="microsoft-title">Microsoft impact at PTG</h2><p>Microsoft's reported health stays automatic. Add a PTG impact assessment and guidance for active issues.</p>
+                        <div class="section-head"><p id="microsoft-feedback" role="status">Loading Microsoft issues…</p><button id="refresh-microsoft" class="secondary" type="button">Refresh Microsoft issues</button></div>
+                        <label for="microsoft-search">Find a Microsoft issue</label><input id="microsoft-search" type="search" placeholder="Search service, title or reference"><p id="microsoft-empty" class="help" hidden>No issues match this search.</p><div id="microsoft-issues"></div>
+                    </section>
+
+                    <section id="manage-announcement" class="section panel" aria-labelledby="announcement-heading">
+                        <p class="kicker">Site-wide communication</p><h2 id="announcement-heading">Status page announcement</h2>
+                        <form id="announcement-form" novalidate>
+                            <label for="announcement-title">Title</label><input id="announcement-title" type="text" maxlength="120">
+                            <label for="announcement-message">Message</label><textarea id="announcement-message" rows="5" maxlength="1000"></textarea>
+                            <label for="announcement-level">Style</label><select id="announcement-level"><option value="info">Information</option><option value="urgent">Urgent</option><option value="success">Success</option><option value="maintenance">Maintenance</option></select>
+                            <label for="announcement-expiry">Expires</label><input id="announcement-expiry" type="datetime-local">
+                            <div class="actions"><button type="submit">Stage announcement</button><button id="announcement-cancel" class="secondary" type="button">Reset form</button><button id="announcement-remove" class="secondary" type="button">Remove announcement</button></div>
+                        </form>
+                    </section>
+
+                    <section id="manage-users" class="section panel" hidden aria-labelledby="users-title">
+                        <p class="kicker">People &amp; access</p><h2 id="users-title">User management</h2>
+                        <p class="help">Account changes are saved immediately. Editors submit status updates for administrator approval. Administrators can also manage users.</p>
+                        <p id="users-feedback" role="status" aria-live="polite"></p>
+                        <div class="notice-layout">
+                            <div><h3>Accounts</h3><div id="users-list"></div></div>
+                            <div class="editor-pane">
+                                <h3 id="user-editor-title">Create user</h3>
+                                <form id="user-form" class="user-form-grid">
+                                    <div class="user-field user-field-username"><label for="user-username">Username</label><input id="user-username" maxlength="100" pattern="[a-zA-Z0-9@._\-]+" autocomplete="off" required></div>
+                                    <div class="user-field user-field-email"><label for="user-email">Email address</label><input id="user-email" type="email" maxlength="254" autocomplete="off" required><p id="welcome-email-help" class="help">New enabled accounts receive sign-in details by email when Microsoft 365 sending is configured.</p></div>
+                                    <div class="user-field"><label for="user-entraObjectId">Microsoft Entra user Object ID (optional)</label><input id="user-entraObjectId" maxlength="36" autocomplete="off"><p class="help">Link this authorised account to its user Object ID from your Azure tenant to allow Microsoft sign-in.</p></div>
+                                    <div class="user-field user-field-firstName"><label for="user-firstName">First name</label><input id="user-firstName" maxlength="100" required></div>
+                                    <div class="user-field user-field-lastName"><label for="user-lastName">Last name</label><input id="user-lastName" maxlength="100" required></div>
+                                    <div class="user-field user-field-jobTitle"><label for="user-jobTitle">Job title</label><input id="user-jobTitle" maxlength="160" required></div>
+                                    <div class="user-field user-field-password" hidden><label for="user-password">Password</label><input id="user-password" type="password" minlength="12" maxlength="256" autocomplete="new-password"></div>
+                                    <p class="help">New users choose their password through a one-use email link. Use “Send password link” on an account to issue a new link.</p>
+                                    <div class="user-field user-field-role"><label for="user-role">Access</label><select id="user-role"><option value="editor">Editor</option><option value="admin">Administrator</option></select></div>
+                                    <label class="checkbox-label"><input id="user-active" type="checkbox" checked> Account enabled</label>
+                                    <div class="actions"><button type="submit">Save user</button><button id="user-clear" type="button" class="secondary">Clear form</button><button id="users-refresh" type="button" class="secondary">Refresh accounts</button></div>
+                                </form>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section id="manage-approvals" class="section panel" aria-labelledby="approvals-title"><h2 id="approvals-title">Publishing approvals</h2><p>Editors submit changes here. An administrator reviews the changes before they go live.</p><button id="refresh-approvals" type="button" class="secondary">Refresh requests</button><div id="approvals-list"></div></section>
+                    <section id="availability-reports" class="section panel" aria-labelledby="reports-title"><h2 id="reports-title">Availability reports</h2><p class="help">UTC calendar months. Fully operational % excludes maintenance and unknown time. Gaps over two minutes are unknown. Recording begins with this update; up to 400 days are retained.</p><div class="actions report-controls"><label for="report-month">Month<input id="report-month" type="month"></label><button id="load-report" type="button">Load report</button><button id="export-report" type="button" class="secondary" disabled>Download CSV</button></div><p id="report-summary" role="status"></p><div id="report-table" class="table-scroll"></div></section>
+                    <section id="audit-history" class="section panel" aria-labelledby="audit-title"><h2 id="audit-title">Audit history</h2><p class="help">Account, password-link and publishing changes recorded since this update. Passwords, tokens and API credentials are never included.</p><div class="actions"><button id="refresh-audit" type="button" class="secondary">Refresh</button><button id="audit-newer" type="button" class="secondary">Newer</button><button id="audit-older" type="button" class="secondary">Older</button></div><p id="audit-page" role="status"></p><div id="audit-list"></div></section>
+                    <section id="manage-subscribers" class="section panel" aria-labelledby="subscribers-title"><h2 id="subscribers-title">Email subscribers</h2><p class="help">Confirmed addresses receive updates for their selected services. Pausing cancels queued emails; resuming covers future updates. An email already being sent cannot be recalled.</p><p id="subscriber-counts"></p><form id="subscriber-search-form" class="subscriber-controls"><label for="subscriber-search">Find an address<input id="subscriber-search" type="search" maxlength="254"></label><label for="subscriber-filter">Show<select id="subscriber-filter"><option value="all">All subscribers</option><option value="confirmed">Confirmed</option><option value="paused">Paused</option><option value="pending">Awaiting confirmation</option><option value="expired">Expired confirmations</option><option value="failed">Delivery failures</option></select></label><button type="submit">Search / refresh</button></form><p id="subscriber-feedback" role="status"></p><div id="subscriber-list"></div><div class="actions"><button id="subscriber-newer" type="button" class="secondary">Previous page</button><button id="subscriber-older" type="button" class="secondary">Next page</button></div><p id="subscriber-page"></p></section>
+                    <section id="incident-reviews" class="section panel" aria-labelledby="incident-reviews-title"><h2 id="incident-reviews-title">Incident review reports</h2><p class="help">Review resolved PTG incidents, record the cause and lessons, and assign follow-up actions. Reports stay private to administrators.</p><button id="reviews-refresh" type="button" class="secondary">Refresh incidents</button><p id="review-feedback" role="status"></p><div id="incident-review-list"></div><div id="incident-review-editor" hidden><h3 id="review-incident-title"></h3><p id="review-incident-summary"></p><form id="incident-review-form"><label for="review-impactSummary">Impact assessment</label><textarea id="review-impactSummary" rows="3" maxlength="5000"></textarea><label for="review-rootCause">Root cause</label><textarea id="review-rootCause" rows="3" maxlength="5000"></textarea><label for="review-resolution">Resolution</label><textarea id="review-resolution" rows="3" maxlength="5000"></textarea><label for="review-lessonsLearned">Lessons learned</label><textarea id="review-lessonsLearned" rows="3" maxlength="5000"></textarea><h4>Follow-up actions</h4><div id="review-actions"></div><button id="review-add-action" type="button" class="secondary">Add follow-up action</button><div class="actions"><button id="review-save" type="submit">Save review</button><button id="review-download" type="button" class="secondary">Download saved report</button><button id="review-clear" type="button" class="secondary">Close review</button></div></form><details><summary>Published incident timeline</summary><div id="review-timeline"></div></details></div></section>
+                    <section id="review-changes" class="section panel" aria-labelledby="review-title"><p class="kicker">Final review</p><h2 id="review-title">Review staged changes</h2><div id="change-list"></div></section>
+                </div>
+            </div>
+
+            <div class="publish-bar"><div><strong id="draft-label">All changes published</strong><p>Visitors receive updates on refresh or within 30 seconds.</p></div><div class="actions"><button id="preview" class="secondary" type="button">Preview draft</button><button id="reload" class="secondary" type="button">Reload</button><button id="disconnect" class="secondary" type="button">Sign out</button><button id="publish" type="button" disabled>Publish changes</button></div></div>
+        </div>
+
+        <dialog id="service-editor" aria-labelledby="service-editor-title">
+            <form id="service-form" novalidate>
+                <div class="section-head"><div><p class="kicker">PTG-managed service</p><h2 id="service-editor-title">Add a service</h2></div><button id="cancel-service" class="secondary" type="button">Close</button></div>
+                <p id="service-reference" class="help"></p>
+                <label for="service-name">Service name</label><input id="service-name" type="text" maxlength="100" required>
+                <label for="service-description">Description</label><textarea id="service-description" rows="3" maxlength="500"></textarea>
+                <label for="service-group">Group</label><input id="service-group" type="text" maxlength="100" placeholder="Progressive Technology Managed Services">
+                <label for="service-order">Display order</label><input id="service-order" type="number" min="0" step="1" value="100">
+                <fieldset><legend>Ownership and dependencies</legend>
+                    <label for="service-owner-team">Owner team</label><input id="service-owner-team" maxlength="100" placeholder="Team responsible for this service"><p class="help">The owner team is visible on the public status page.</p>
+                    <div id="service-escalation-field"><label for="service-escalation-contact">Escalation contact (administrator only)</label><input id="service-escalation-contact" maxlength="254" placeholder="Email address, phone number or escalation route"><p class="help">This contact stays private in the admin workspace. Unsaved contact edits are not stored in browser draft recovery.</p></div>
+                    <label>Depends on</label><div id="service-dependencies" class="dependency-options"></div><p class="help">Choose the services this service needs. Dependency warnings describe possible impact and do not change reported availability.</p>
+                </fieldset>
+                <label for="service-initial-status">Availability</label><select id="service-initial-status"><option value="operational">Operational</option><option value="degraded">Degraded performance</option><option value="advisory">Service advisory</option><option value="outage">Service outage</option><option value="maintenance">Maintenance</option><option value="unknown">Status unavailable</option></select>
+                <fieldset>
+                    <legend>Health check</legend>
+                    <label for="service-check-type">Check type</label><select id="service-check-type"><option value="manual">Manual</option><option value="ping">Ping</option><option value="tcp">TCP port</option><option value="http">HTTP API</option><option value="supabase">Supabase</option></select>
+                    <label for="service-check-target">Target</label><input id="service-check-target" type="text" placeholder="Internal IPv4 address or HTTP/HTTPS URL">
+                    <label for="service-check-port">TCP port</label><input id="service-check-port" type="number" min="1" max="65535">
+                    <label for="service-check-interval">Check interval</label><select id="service-check-interval"><option value="30">30 seconds</option><option value="60" selected>60 seconds</option><option value="120">2 minutes</option><option value="300">5 minutes</option></select>
+                    <label class="checkbox-label" for="service-check-paused"><input id="service-check-paused" type="checkbox"> Pause automated checks</label>
+                    <div id="service-api-fields" hidden>
+                        <label for="service-api-method">HTTP method</label><select id="service-api-method"><option value="GET">GET</option><option value="POST">POST</option></select>
+                        <label for="service-api-expect">Expected response text</label><input id="service-api-expect" type="text">
+                        <label for="service-api-key">API key</label><input id="service-api-key" type="password" autocomplete="new-password">
+                        <label for="service-api-auth">Authorisation header</label><input id="service-api-auth" type="password" autocomplete="new-password">
+                        <p id="service-api-saved" class="help">No published credentials saved.</p>
+                        <label class="checkbox-label" for="service-api-clear"><input id="service-api-clear" type="checkbox"> Remove saved API credentials when published</label>
+                    </div>
+                    <div id="service-supabase-fields" hidden>
+                        <label for="service-supabase-project">Supabase project reference</label><input id="service-supabase-project" type="text" value="xlbmpqyjpsnfvbgxsvql">
+                        <fieldset><legend>Supabase services</legend><label><input class="service-supabase-service" type="checkbox" value="auth"> Authentication</label><label><input class="service-supabase-service" type="checkbox" value="database"> Database</label><label><input class="service-supabase-service" type="checkbox" value="storage"> Storage</label><label><input class="service-supabase-service" type="checkbox" value="realtime"> Realtime</label></fieldset>
+                    </div>
+                </fieldset>
+                <div class="actions"><button type="submit">Save service to draft</button><button id="cancel-service-bottom" class="secondary" type="button" onclick="document.getElementById('cancel-service').click()">Cancel</button></div>
+            </form>
+        </dialog>
+
+        <dialog id="timeline-editor" aria-labelledby="timeline-editor-title">
+            <form id="timeline-form" novalidate>
+                <div class="section-head"><div><p class="kicker">Published incident history</p><h2 id="timeline-editor-title">Correct timeline update</h2></div><button id="timeline-close" class="secondary" type="button">Close</button></div>
+                <p class="help">The original publication time is retained. Corrections stay in the draft until you publish.</p>
+                <p><strong>Published:</strong> <time id="timeline-published"></time></p>
+                <label for="timeline-message">Update message</label><textarea id="timeline-message" rows="5" maxlength="5000" required></textarea>
+                <label for="timeline-phase">Stage</label><select id="timeline-phase"><option value="investigating">Investigating</option><option value="identified">Identified</option><option value="monitoring">Monitoring</option><option value="resolved">Resolved</option></select>
+                <label for="timeline-impact">PTG impact</label><select id="timeline-impact"><option value="unknown">Impact not confirmed</option><option value="confirmed">Affecting PTG</option><option value="not-affected">No PTG impact confirmed</option></select>
+                <label for="timeline-workaround">Workaround at this update</label><textarea id="timeline-workaround" rows="3" maxlength="3000"></textarea>
+                <label for="timeline-next-update">Next update expected at the time</label><input id="timeline-next-update" type="datetime-local">
+                <div class="actions"><button type="submit">Save correction to draft</button><button id="timeline-cancel" class="secondary" type="button">Cancel</button></div>
+            </form>
+        </dialog>
+
+        <dialog id="preview-dialog" aria-labelledby="preview-title"><div class="section-head"><h2 id="preview-title">Draft preview</h2><button id="close-preview" class="secondary" type="button">Close preview</button></div><p>Staged content below is not live until published.</p><div id="preview-content"></div></dialog>
+    </main>
+    <footer><div class="wrap foot"><div><strong>Progressive Technology Group</strong><br><small>PTG Service Status Administration</small></div><a href="/">Return to service status</a></div></footer>
+</body>
+</html>
+

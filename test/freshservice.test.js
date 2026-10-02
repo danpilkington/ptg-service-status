@@ -1,6 +1,6 @@
 "use strict";
 const {test}=require("node:test"),assert=require("node:assert/strict"),fs=require("node:fs/promises"),os=require("node:os"),path=require("node:path");
-const {configuration,createFreshserviceNotifier}=require("../freshservice");
+const {configuration,createFreshserviceNotifier}=require("../src/freshservice");
 const env={FRESHSERVICE_DOMAIN:"example-company",FRESHSERVICE_API_KEY:"secret-key",FRESHSERVICE_REQUESTER_EMAIL:"status@example.com",FRESHSERVICE_PRIORITY:"4",FRESHSERVICE_GROUP_ID:"12",FRESHSERVICE_WORKSPACE_ID:"34"};
 test("Freshservice configuration is optional and validates supplied settings",()=>{assert.equal(configuration({}),null);assert.equal(configuration({FRESHSERVICE_DOMAIN:"example-company"}),null);assert.throws(()=>configuration({FRESHSERVICE_DOMAIN:"https://bad.example"}));assert.throws(()=>configuration({...env,FRESHSERVICE_PRIORITY:"5"}));assert.equal(configuration(env).priority,4);});
 test("one ticket is created per non-operational episode and state survives restart",async t=>{

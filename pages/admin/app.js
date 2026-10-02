@@ -43,6 +43,8 @@
         activate(tabs.some(tab => tab.dataset.adminTab === requested) ? requested : tabs[0].dataset.adminTab);
     }
 
+    const ssoResult = new URLSearchParams(location.search).get("sso");
+    if (ssoResult) history.replaceState(null, "", location.pathname + location.hash);
     setupAdminTabs();
     const $ = id => document.getElementById(id);
     const labels = { operational: "Operational", degraded: "Degraded performance", advisory: "Service advisory", outage: "Service outage", maintenance: "Maintenance", unknown: "Status unavailable" };
@@ -92,16 +94,18 @@
         $("save-state").textContent = dirty ? "Draft" : "Published";
         $("draft-label").textContent = dirty ? "You have unpublished changes" : "All changes published";
     }
-    const hasUnsaved = () => dirty || changedForms.size > 0;
+    let management=null;
+    const clearManagementViews=()=>management?.clear();
+    const hasUnsaved = () => dirty || changedForms.size > 0 || !!management?.dirty();
 
     function changes() {
         if (!baseline || !data) return [];
         const result = [];
         for (const service of data.services) {
             const old = baseline.services.find(s => s.id === service.id);
-            const fields = ["name", "description", "status", "group", "order"].filter(k => !old || (old[k] ?? "") !== (service[k] ?? ""));
+            const fields = ["name", "description", "status", "group", "order", "ownerTeam", "escalationContact", "dependsOn"].filter(k => !old || JSON.stringify(old[k] ?? (k==="dependsOn"?[]:"")) !== JSON.stringify(service[k] ?? (k==="dependsOn"?[]:"")));
             if (fields.length) result.push({ title: service.name, detail: old ? "Updated service" : "New service",
-                fields: fields.map(k => k + ": " + (old ? (k === "status" ? labels[old.status] : old[k] ?? "Not set") + " → " : "") + (k === "status" ? labels[service.status] : service[k] ?? "Not set")) });
+                fields: fields.map(k => ({ownerTeam:"Owner team",escalationContact:"Escalation contact",dependsOn:"Dependencies"}[k]||k) + ": " + (old ? (k === "status" ? labels[old.status] : old[k] ?? "Not set") + " → " : "") + (k === "status" ? labels[service.status] : service[k] ?? "Not set")) });
         }
         for (const service of baseline.services.filter(old => !data.services.some(s => s.id === old.id))) {
             result.push({title: service.name, detail: "Removed service", fields: ["This service will no longer appear on the dashboard. Resolved incident history is retained."]});
@@ -232,6 +236,12 @@
         $("service-name").value = service?.name || "";
         $("service-description").value = service?.description || "";
         $("service-group").value = service?.group || "";
+        $("service-owner-team").value=service?.ownerTeam||"";
+        $("service-escalation-contact").value=service?.escalationContact||"";$("service-escalation-field").hidden=accountRole!=="admin";
+        const dependencies=$("service-dependencies");dependencies.replaceChildren();
+        for(const candidate of [...data.services,...window.PTGServices.providers].filter((s,i,all)=>s.id!==service?.id&&all.findIndex(x=>x.id===s.id)===i)){
+            const label=document.createElement("label"),box=document.createElement("input");box.type="checkbox";box.id="service-dependency-"+candidate.id;box.value=candidate.id;box.checked=service?.dependsOn?.includes(candidate.id)||false;label.append(box,document.createTextNode(candidate.name));dependencies.append(label);
+        }
         $("service-order").value = service?.order ?? 100;
         $("service-check-type").value = service?.monitor?.type || "manual";
         $("service-check-target").value = service?.monitor?.target || "";
@@ -252,6 +262,7 @@
         $("service-editor").showModal();
     }
     function removeService(service) {
+        if(data.services.some(s=>s.dependsOn?.includes(service.id))){feedback("Remove this service from other services’ dependencies before removing it.",true);return;}
         if (data.incidents.some(i => i.serviceId === service.id && i.phase !== "resolved") ||
             data.maintenance.some(i => i.serviceId === service.id)) {
             feedback("Resolve or reassign this service's active incidents, and remove or reassign its maintenance notices before removing it.", true);
@@ -306,7 +317,7 @@
         });
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || "Unable to connect to the publishing service.");
-        if (method === "GET" && result.editorVersion !== 8) throw new Error("The publishing server needs a restart to enable this updated admin page. Restart the Node server, then connect again.");
+        if (method === "GET" && result.editorVersion !== 9) throw new Error("The publishing server needs a restart to enable this updated admin page. Restart the Node server, then connect again.");
         return result;
     }
     function timeline(item) {
@@ -521,6 +532,7 @@
             actions.append(button("Edit service", () => editService(service)), button("Remove service", () => removeService(service)));
             const diagnostic = text("p", "", "health-result"); diagnostic.dataset.healthService = service.id;
             card.append(diagnostic);
+            card.append(text("p","Owner: "+(service.ownerTeam||"Unassigned")+" · Dependencies: "+(service.dependsOn?.join(", ")||"None recorded"),"help"));
             card.append(bulkLabel, head, text("p", (service.group || "Progressive Technology Managed Services ") + " · Order " + (service.order ?? 100), "help"), label, select, actions); $("services").append(card);
             for (const id of ["incident-service", "maintenance-service"]) $(id).add(new Option(service.name || service.id, service.id));
         }
@@ -558,6 +570,7 @@
             busy = false;
             document.querySelectorAll("button, input, select, textarea").forEach(el => el.disabled = false);
             $("publish").disabled = !dirty;
+            if($("review-save"))$("review-save").disabled=$("review-save").dataset.resolved==="false";
         }
     }
     async function load() {
@@ -594,7 +607,7 @@
                 text("p", user.username + " · " + (user.role === "admin" ? "Administrator" : "Editor") + " · " + (user.active ? "Enabled" : "Disabled")),
                 button("Edit account", () => {
                     editingUser = user.id;
-                    $("user-email").value = user.email || ""; $("user-email").required = false;
+                    $("user-entraObjectId").value = user.entraObjectId || ""; $("user-email").value = user.email || ""; $("user-email").required = false;
                     for (const field of ["username", "firstName", "lastName", "jobTitle", "role"]) $("user-" + field).value = user[field];
                     $("user-active").checked = user.active; $("user-password").value = ""; $("user-password").required = false;
                     $("user-editor-title").textContent = "Edit " + user.username; $("user-username").focus();
@@ -626,7 +639,7 @@
         const admin = user.role === "admin";
         accountRole=user.role;
         await loadIntegrations();
-        $("audit-nav").hidden=!admin;
+        $("audit-nav").hidden=!admin;$("subscribers-nav").hidden=!admin;$("reviews-nav").hidden=!admin;
         $("publish").textContent=admin?"Publish changes":"Submit for approval";
         $("manage-users").hidden = !admin; $("users-nav").hidden = !admin;
         if (admin) await loadUsers();
@@ -645,7 +658,7 @@
         event.preventDefault();
         run(async () => {
             const body = {};
-            for (const field of ["username", "email", "firstName", "lastName", "jobTitle", "role", "password"]) body[field] = $("user-" + field).value;
+            for (const field of ["username", "email", "entraObjectId", "firstName", "lastName", "jobTitle", "role", "password"]) body[field] = $("user-" + field).value;
             body.active = $("user-active").checked;
             try {
                 const saved = await accountRequest("users" + (editingUser ? "/" + encodeURIComponent(editingUser) : ""), editingUser ? "PUT" : "POST", body);
@@ -753,7 +766,7 @@
         clearRecovery(); credentialEdits.clear();
         $("service-api-key").value="";$("service-api-auth").value="";
         accountRequest("logout", "POST").catch(() => {}); clearUserForm(); $("users-list").replaceChildren(); $("users-feedback").textContent = ""; $("login-password").value = "";
-        key = ""; data = null; baseline = null; revision = ""; dirty = false; publicIssues = []; changedForms.clear();
+        clearManagementViews(); key = ""; data = null; baseline = null; revision = ""; dirty = false; publicIssues = []; changedForms.clear();
         document.querySelector("[data-integration-panel]").hidden=true; $("integration-health").replaceChildren();
         $("editor").hidden = true; $("connection").hidden = false; $("admin-key").value = "";
         $("published").textContent = "Connect to load"; $("published").removeAttribute("datetime");
@@ -797,7 +810,8 @@
         if (mode === "supabase" && !monitor.services.length) return feedback("Select at least one Supabase service to monitor.",true);
         if (monitor && !["http","supabase"].includes(mode) && (!/^(?:\d{1,3}\.){3}\d{1,3}$/.test(monitor.target) || monitor.target.split(".").some(n=>Number(n)>255))) return feedback("Enter a valid internal IPv4 address for the health check.",true);
         const item = { ...old, monitor, id: old?.id || slug + "-" + crypto.randomUUID().slice(0, 8), name, description,
-            group: $("service-group").value.trim(), order: Number($("service-order").value), status, statusText: labels[status], source: "PTG" };
+            ownerTeam:$("service-owner-team").value.trim(), dependsOn:[...$("service-dependencies").querySelectorAll("input:checked")].map(input=>input.value), ...(accountRole==="admin"?{escalationContact:$("service-escalation-contact").value.trim()}:{}), group: $("service-group").value.trim(), order: Number($("service-order").value), status, statusText: labels[status], source: "PTG" };
+        try{window.PTGServices.validateServices([...data.services.filter(s=>s.id!==item.id),item]);}catch(error){return feedback(error.message,true);}
         if (mode === "http") {
             let url;try{url=new URL(monitor.target);}catch{return feedback("Enter a plain HTTP/HTTPS API URL, without Markdown formatting.",true);}
             if(!["http:","https:"].includes(url.protocol))return feedback("Use an HTTP/HTTPS URL.",true);
@@ -850,11 +864,17 @@
         const templates = {
             outage: ["Service unavailable", "We are investigating reports that this service is unavailable. We will share an update when we know more."],
             degraded: ["Slow or intermittent service", "We are investigating reports of slow or intermittent access. Please avoid repeated retries while we investigate."],
-            signin: ["Sign-in problem", "We are investigating reports of sign-in difficulties. Please contact IT support if you are affected."]
+            signin: ["Sign-in problem", "We are investigating reports of sign-in difficulties. Please contact IT support if you are affected."],
+            network: ["Connectivity problem", "We are investigating reports of network connectivity problems. Please contact IT Support with your location and affected service."],
+            identified: ["Cause identified", "We have identified the cause and are working on a fix. We will publish the next update at the time shown below."],
+            monitoring: ["Recovery being monitored", "A fix has been applied and we are monitoring service recovery. Please report any continuing problems to IT Support."],
+            resolved: ["Service restored", "The service has been restored. Please contact IT Support if you continue to experience problems."]
         };
         const template = templates[$("incident-template").value];
         $("incident-title").value = (service?.name || "Service") + ": " + template[0];
         $("incident-message").value = template[1];
+        const stage = $("incident-template").value;
+        $("incident-phase").value = ["identified","monitoring","resolved"].includes(stage) ? stage : "investigating";
         $("incident-impact").value = "unknown";
         $("incident-next-update").value = localDate(new Date(Date.now() + 1800000).toISOString());
         changedForms.add("incident-form");
@@ -928,6 +948,15 @@
                 if(state.failures)card.append(text("p",state.failures+" consecutive failed attempts","help"));
                 if(state.message)card.append(text("p",state.message));grid.append(card);
             }
+            if(result.sso){
+                const card=text("article","","integration-item");card.dataset.state=result.sso.enabled&&result.sso.tokenValidatorReady?"healthy":"error";
+                card.append(text("h4","Microsoft admin sign-in"),text("p",result.sso.enabled?"Enabled":"Disabled or incomplete configuration"),text("p",result.sso.tokenValidatorReady?"Token validator installed":"Token validator missing or unavailable"),text("p",(result.sso.linkedAccounts||0)+" enabled accounts linked"));
+                if(result.sso.redirectUri)card.append(text("p","Callback: "+result.sso.redirectUri,"help"));
+                if(result.sso.lastSuccessAt)card.append(text("p","Last successful sign-in: "+format(result.sso.lastSuccessAt),"help"));
+                for(const failure of (result.sso.recentFailures||[]).slice(0,3))card.append(text("p",format(failure.at)+": "+failure.message+(failure.providerCodes?.length?" Microsoft codes: "+failure.providerCodes.join(", "):"")));
+                grid.append(card);
+            }
+            if(result.subscriptions){const card=text("article","","integration-item");card.dataset.state=result.subscriptions.failed?"error":result.subscriptions.enabled?"healthy":"disabled";card.append(text("h4","Incident email subscriptions"),text("p",!result.subscriptions.enabled?"Not configured":result.subscriptions.failed?"Delivery needs attention":"Enabled"),text("p","Last delivery cycle: "+format(result.subscriptions.lastSuccessAt),"help"));grid.append(card);}
             const checks=Object.values(result.checks||{}).filter(Boolean),errors=checks.filter(c=>c.kind==="monitor-error").length,stale=checks.filter(c=>c.stale).length;
             for(const [name,worker,limit] of [["Health checks",result.monitoring,90000],["Background status refresh",result.automation,180000]]){
                 const card=text("article","","integration-item"),overdue=!worker.lastCompletedAt||Date.now()-Date.parse(worker.lastCompletedAt)>limit;
@@ -981,9 +1010,10 @@
             const forms = {};
             for (const id of changedForms) {
                 const form = $(id); if (!form) continue;
-                forms[id] = [...form.querySelectorAll("input,select,textarea")].filter(el => el.id && el.type !== "password").map(el => ({id:el.id,value:el.value,checked:el.checked}));
+                forms[id] = [...form.querySelectorAll("input,select,textarea")].filter(el => el.id && el.type !== "password" && el.id !== "service-escalation-contact").map(el => ({id:el.id,value:el.value,checked:el.checked}));
             }
-            localStorage.setItem(draftKey, JSON.stringify({version:1,savedAt:new Date().toISOString(),revision,data,baseline,forms,editingId,editingMaintenance,editingService}));
+            const browserCopy=value=>({...value,services:value.services.map(window.PTGServices.publicService)});
+            localStorage.setItem(draftKey, JSON.stringify({version:1,savedAt:new Date().toISOString(),revision,data:browserCopy(data),baseline:browserCopy(baseline),forms,editingId,editingMaintenance,editingService}));
             $("draft-storage").textContent = "Draft saved in this browser at " + formatTime(new Date()) + ". The admin key is not saved. Disconnect clears this copy.";
         } catch {
             $("draft-storage").textContent = "This browser could not save the draft. Keep this tab open until you publish.";
@@ -1010,7 +1040,9 @@
         if (!recovery || recovery.revision !== revision) return;
         if (hasUnsaved() && !confirm("Replace current edits with the saved draft?")) return;
         const saved = recovery; recovery = null;
-        data = saved.data; render(); baseline = saved.baseline;
+        const contacts=new Map(data.services.map(service=>[service.id,service.escalationContact]));
+        const restore=value=>({...value,services:value.services.map(service=>accountRole==="admin"&&contacts.get(service.id)!==undefined?{...service,escalationContact:contacts.get(service.id)}:window.PTGServices.publicService(service))});
+        data=restore(saved.data);render();baseline=restore(saved.baseline);
         if (saved.editingId) { const item = data.incidents.find(i=>i.id===saved.editingId); if (item) editIncident(item); }
         if (saved.editingMaintenance) { const item = data.maintenance.find(i=>i.id===saved.editingMaintenance); if (item) editMaintenance(item); }
         if (saved.forms["service-form"]) editService(data.services.find(i=>i.id===saved.editingService));
@@ -1115,6 +1147,14 @@
     for(const [id,loader] of [["manage-approvals",loadApprovals],["audit-history",loadAudit],["availability-reports",loadReport]]){
         document.querySelector('[data-admin-tab="'+id+'"]').addEventListener("click",()=>{if(key)run(loader);});
     }
+    if(window.PTGManagement)management=window.PTGManagement({$,text,button,run,accountRequest,format,getKey:()=>key});
+    $("microsoft-sign-in").addEventListener("click", () => { location.assign("/api/admin/sso/start"); });
+    fetch("/api/admin/sso/config", { cache: "no-store" }).then(r => r.json()).then(c => { $("microsoft-sign-in").hidden = !c.enabled; }).catch(() => {});
+    if (ssoResult === "complete") run(async () => {
+        const result = await accountRequest("sso/complete", "POST", {});
+        key = result.token; await load(); await loadAccount();
+    });
+    else if (ssoResult) feedback(ssoResult === "denied" ? "Your Microsoft account is not authorised. Contact IT Support to link and enable your account." : "Microsoft sign-in could not be completed. Please try again.", true);
 })();
 
 

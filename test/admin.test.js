@@ -7,7 +7,7 @@ const fs = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
 const express = require("express");
-const attach = require("../admin-api");
+const attach = require("../src/admin-api");
 test("publishing validates, authenticates, persists and detects conflicts", async t => {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), "ptg-status-"));
     const file = path.join(dir, "status.json");
@@ -98,8 +98,8 @@ test("public pages work, private files are blocked, and local status reaches API
     await new Promise(resolve=>server.once("listening",resolve));
     t.after(()=>new Promise(resolve=>server.close(resolve)));
     const base="http://127.0.0.1:"+server.address().port;
-    for(const route of ["/","/admin/","/style.css","/admin/app.js"]) assert.equal((await fetch(base+route)).status,200,route);
-    for(const route of ["/.env","/server.js","/admin-api.js","/package.json","/node_modules/express/package.json","/status.json","/users.json","/storage.js","/database/setup.sql","/database-setup.js"]) assert.equal((await fetch(base+route)).status,404,route);
+    for(const route of ["/","/index.html","/info.html","/maintenance.html","/subscriptions.html","/app.js","/public-ui.js","/subscriptions-ui.js","/admin/","/admin/index.html","/admin/password.html","/style.css","/admin/style.css","/admin/app.js","/admin/password.js","/admin/management.js"]) assert.equal((await fetch(base+route)).status,200,route);
+    for(const route of ["/.env","/server.js","/admin-api.js","/package.json","/node_modules/express/package.json","/status.json","/users.json","/storage.js","/database/setup.sql","/database-setup.js","/pages/status/index.html","/pages/admin/index.html"]) assert.equal((await fetch(base+route)).status,404,route);
     assert.equal((await fetch(base+"/api/admin/status")).status,503);
     const result=await (await fetch(base+"/api/status")).json();
     assert.equal(result.microsoftAvailable,false);

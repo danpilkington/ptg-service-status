@@ -1,7 +1,7 @@
 "use strict";
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const model = require("../incident-model");
+const model = require("../src/incident-model");
 const at = "2026-09-16T10:00:00.000Z";
 const later = "2026-09-16T11:00:00.000Z";
 const input = { id: "vpn-1", title: "VPN interruption", serviceId: "vpn", message: "Investigating connectivity.", start: at, phase: "investigating", impact: "confirmed", workaround: "Use the office network." };

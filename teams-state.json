@@ -4,12 +4,14 @@
     "Microsoft:sharepoint-online": {
       "active": false,
       "status": "operational",
-      "notifiedAt": "2026-09-30T13:33:32.121Z",
-      "recoveredAt": "2026-09-30T16:07:42.302Z"
+      "notifiedAt": "2026-10-01T18:06:20.137Z",
+      "recoveredAt": "2026-10-01T18:54:20.280Z"
     },
     "Microsoft:onedrive": {
       "active": false,
-      "status": "operational"
+      "status": "operational",
+      "notifiedAt": "2026-10-01T18:06:20.626Z",
+      "recoveredAt": "2026-10-01T18:54:20.599Z"
     },
     "Microsoft:intune": {
       "active": false,
@@ -45,7 +47,9 @@
     },
     "PTG:building-access-controls-fe4fbe1c": {
       "active": false,
-      "status": "operational"
+      "status": "operational",
+      "notifiedAt": "2026-10-01T14:38:14.357Z",
+      "recoveredAt": "2026-10-01T14:38:54.289Z"
     },
     "PTG:intune-dfed53e7": {
       "active": false,
@@ -116,8 +120,8 @@
     "PTG:epicor-reports-729bd7d6": {
       "active": false,
       "status": "operational",
-      "notifiedAt": "2026-10-01T05:04:57.468Z",
-      "recoveredAt": "2026-10-01T05:12:55.016Z"
+      "notifiedAt": "2026-10-02T05:11:21.907Z",
+      "recoveredAt": "2026-10-02T05:12:21.847Z"
     },
     "PTG:epicor-database-6966f287": {
       "active": false,

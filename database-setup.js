@@ -3,7 +3,7 @@ if (require.main === module) require("dotenv").config({ path: require("node:path
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { randomUUID } = require("node:crypto");
-const { createFileStorage, createSqlStorage, revision } = require("./storage");
+const { createFileStorage, createSqlStorage, revision } = require("./src/storage");
 
 async function migrate(store, source) {
     const status = await source.read("status"), users = await source.read("users") || "[]\n";

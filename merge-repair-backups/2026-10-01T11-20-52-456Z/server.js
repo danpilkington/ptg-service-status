@@ -8,7 +8,7 @@ const path = require("path");
 const { ClientSecretCredential } = require("@azure/identity");
 
 const app = express();
-const { normaliseIncident, applyAssessments } = require("./src/incident-model");
+const { normaliseIncident, applyAssessments } = require("./incident-model");
 
 const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || "127.0.0.1";
@@ -45,7 +45,6 @@ const credential = missingEnvironmentVariables.length === 0
     : null;
 
 app.disable("x-powered-by");
-app.set("trust proxy",process.env.TRUST_PROXY||"loopback");
 
 app.use((request, response, next) => {
     response.setHeader("X-Content-Type-Options", "nosniff");
@@ -62,18 +61,13 @@ app.use((request, response, next) => {
 app.use(express.json({ limit: "2mb" }));
 
 
-const storage = require("./src/storage").createStorage({ statusFile: STATUS_FILE });
-const subscriptions = require("./src/subscriptions").createSubscriptions({storage,getServices:async()=>{
-    const status=JSON.parse(await storage.read("status"));
-    return [...microsoftServiceDefinitions.map(s=>({id:s.id,name:s.displayName})),...(status.services||[]).map(s=>({id:s.id,name:s.name||s.serviceName||s.id}))].filter((s,i,all)=>all.findIndex(a=>a.id===s.id)===i);
-}});
-subscriptions.attach(app);
-const availability = require("./src/availability").createAvailability(storage);
-const healthMonitor = require("./src/health-monitor").createMonitor(STATUS_FILE, undefined, storage);
-const freshserviceNotifier = require("./src/freshservice").createFreshserviceNotifier();
-const teamsNotifier = require("./src/teams-notifier").createTeamsNotifier();
+const storage = require("./storage").createStorage({ statusFile: STATUS_FILE });
+const availability = require("./availability").createAvailability(storage);
+const healthMonitor = require("./health-monitor").createMonitor(STATUS_FILE, undefined, storage);
+const freshserviceNotifier = require("./freshservice").createFreshserviceNotifier();
+const teamsNotifier = require("./teams-notifier").createTeamsNotifier();
 let statusAutomationTimer;
-const { createIntegrationHealth, createMicrosoftCache, readiness } = require("./src/integration-health");
+const { createIntegrationHealth, createMicrosoftCache, readiness } = require("./integration-health");
 const integrations = createIntegrationHealth();
 for (const [id, enabled] of Object.entries({microsoft:!!credential, freshservice:freshserviceNotifier.enabled, teams:teamsNotifier.enabled, availability:true})) integrations.configure(id, enabled);
 const automation = {started:false,lastCompletedAt:null,error:false,running:false};
@@ -89,32 +83,17 @@ app.locals.integrations = integrations;
 app.locals.monitor = healthMonitor;
 app.locals.automation = automation;
 app.locals.storage = storage;
-require("./src/admin-api")(app, { statusFile: STATUS_FILE, monitor: healthMonitor, storage, availability, subscriptions, integrationHealth:async()=>{
+require("./admin-api")(app, { statusFile: STATUS_FILE, monitor: healthMonitor, storage, availability, integrationHealth:async()=>{
     const status=JSON.parse(await storage.read("status"));
     const auditRaw=await storage.read("audit")||"[]";
-    return {subscriptions:subscriptions.snapshot(),sso:{...app.locals.ssoDiagnostics?.(),linkedAccounts:JSON.parse(await storage.read("users")||"[]").filter(u=>u.active&&u.entraObjectId).length},checkedAt:new Date().toISOString(),integrations:{...integrations.snapshot(),backup:await require("./ops/backup-health").backupHealth(process.env.SQL_BACKUP_HEALTH_FILE)},monitoring:healthMonitor.workerHealth(),automation:{...automation},checks:healthMonitor.details(status.services||[]),retention:{auditCount:JSON.parse(auditRaw).length,auditBytes:Buffer.byteLength(auditRaw),incidents:(status.incidents||[]).length,assessments:(status.microsoftAssessments||[]).length,incidentLimit:500,availabilityDays:400}};
+    return {checkedAt:new Date().toISOString(),integrations:{...integrations.snapshot(),backup:await require("./ops/backup-health").backupHealth(process.env.SQL_BACKUP_HEALTH_FILE)},monitoring:healthMonitor.workerHealth(),automation:{...automation},checks:healthMonitor.details(status.services||[]),retention:{auditCount:JSON.parse(auditRaw).length,auditBytes:Buffer.byteLength(auditRaw),incidents:(status.incidents||[]).length,assessments:(status.microsoftAssessments||[]).length,incidentLimit:500,availabilityDays:400}};
 } });
-// Explicit URL mappings keep existing bookmarks and sign-in redirects stable.
-// Only these public assets are served; the project directory is never exposed.
-const publicFiles = new Map([
-    ["/", "pages/status/index.html"], ["/index.html", "pages/status/index.html"],
-    ["/info.html", "pages/info/index.html"], ["/maintenance.html", "pages/maintenance/index.html"],
-    ["/subscriptions.html", "pages/subscriptions/index.html"],
-    ["/app.js", "pages/status/app.js"], ["/public-ui.js", "pages/status/public-ui.js"],
-    ["/subscriptions-ui.js", "pages/subscriptions/subscriptions-ui.js"],
-    ["/style.css", "assets/style.css"], ["/dashboard-summary.js", "assets/dashboard-summary.js"],
-    ["/maintenance-calendar.js", "assets/maintenance-calendar.js"], ["/service-metadata.js", "assets/service-metadata.js"],
-    ["/admin/", "pages/admin/index.html"], ["/admin/index.html", "pages/admin/index.html"],
-    ["/admin/style.css", "pages/admin/style.css"], ["/admin/app.js", "pages/admin/app.js"],
-    ["/admin/management.js", "pages/admin/management.js"],
-    ["/admin/password.html", "pages/admin/password.html"], ["/admin/password.js", "pages/admin/password.js"]
-]);
+const publicFiles = new Set(["/", "/index.html", "/info.html", "/style.css", "/app.js", "/public-ui.js", "/dashboard-summary.js", "/admin/", "/admin/index.html", "/admin/style.css", "/admin/app.js", "/admin/password.html", "/admin/password.js"]);
 app.get(/^\/admin$/, (req, res) => res.redirect(302, "/admin/"));
 app.use((req, res, next) => {
     if (!["GET", "HEAD"].includes(req.method) || !publicFiles.has(req.path)) return next();
     res.setHeader("Cache-Control", "no-cache");
-    res.setHeader("X-PTG-Project-Layout", "organized-v1");
-    res.sendFile(path.join(__dirname, publicFiles.get(req.path)));
+    res.sendFile(path.join(__dirname, req.path.endsWith("/") ? req.path + "index.html" : req.path));
 });
 
 function normaliseText(value) {
@@ -519,7 +498,7 @@ app.get("/api/status", async (request, response) => {
     const microsoftIncidents = microsoft.data?.incidents || [];
     const microsoftMaintenance = microsoft.data?.maintenance || [];
 
-    const { applyMaintenance, activeAnnouncement } = require("./src/dashboard-model");
+    const { applyMaintenance, activeAnnouncement } = require("./dashboard-model");
     const now = Date.now();
     const localServices = applyMaintenance(healthMonitor.publicServices(localStatus.services), localStatus.maintenance, now).map(service => ({
         ...service,
@@ -531,7 +510,7 @@ app.get("/api/status", async (request, response) => {
         ...localServices
     ];
 
-    const uniqueServices = require("./assets/service-metadata").withDependencies([...new Map(services.map(service => [service.id, service])).values()]);
+    const uniqueServices = [...new Map(services.map(service => [service.id, service])).values()];
     // Retained provider data is display-only: do not count it as a fresh observation or send alerts.
     const observedServices = uniqueServices.map(service=>service.stale?{...service,status:"unknown"}:service);
     const actionableServices = observedServices;
@@ -561,20 +540,10 @@ app.get("/api/status", async (request, response) => {
         supportUrls: localStatus.supportUrls
     };
 
-    void subscriptions.reconcile(responseBody).catch(()=>console.error("Subscription delivery needs attention."));
     response.json(responseBody);
 });
 
-app.get("/api/maintenance/calendar.ics",async(req,res,next)=>{
-    try{
-        const local=await readLocalStatus(),microsoft=await microsoftCache.get();
-        let items=[...(local.maintenance||[]),...(microsoft.data?.maintenance||[])].filter(i=>Date.parse(i.end)>Date.now());
-        if(req.query.id){if(typeof req.query.id!=="string")return res.sendStatus(400);items=items.filter(i=>i.id===req.query.id);if(!items.length)return res.sendStatus(404);}
-        res.set({"Content-Type":"text/calendar; charset=utf-8","Content-Disposition":'attachment; filename="ptg-maintenance.ics"',"Cache-Control":"no-store"});
-        res.send(require("./assets/maintenance-calendar").calendar(items));
-    }catch(error){next(error);}
-});
-require("./src/public-availability").attachPublicAvailability(app,{storage,availability,microsoftIds:microsoftServiceDefinitions.map(s=>s.id)});
+require("./public-availability").attachPublicAvailability(app,{storage,availability,microsoftIds:microsoftServiceDefinitions.map(s=>s.id)});
 
 app.get("/api/health", (request,response)=>{
     response.set("Cache-Control","no-store").json({status:"ok",checkedAt:new Date().toISOString()});

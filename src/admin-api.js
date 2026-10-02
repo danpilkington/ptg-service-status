@@ -8,9 +8,17 @@ const states = new Set(["operational", "degraded", "advisory", "outage", "mainte
 const validText = (s, max) => typeof s === "string" && s.trim().length > 0 && s.length <= max;
 const uniqueItems = (items, limit) => Array.isArray(items) && items.length <= limit &&
     items.every(i => i && validText(i.id, 100)) && new Set(items.map(i => i.id)).size === items.length;
-module.exports = function attachAdmin(app, { statusFile, monitor, key = process.env.ADMIN_API_KEY, storage = createFileStorage(statusFile), availability = require("./availability").createAvailability(storage), welcomeMailer, integrationHealth }) {
+module.exports = function attachAdmin(app, { statusFile, monitor, key = process.env.ADMIN_API_KEY, storage = createFileStorage(statusFile), availability = require("./availability").createAvailability(storage), welcomeMailer, integrationHealth, subscriptions }) {
     let writing = false;
     require("./user-auth")(app, { statusFile, key, storage, welcomeMailer });
+    const adminView=(value,user)=>{
+        const result=health.redact(value);
+        if(result.services)result.services=result.services.map(service=>user.role==="admin"?service:require("../assets/service-metadata").publicService(service));
+        return result;
+    };
+    const subscriberManager=subscriptions||require("./subscriptions").createSubscriptions({storage,mailer:{ready:false},getServices:async()=>[]});
+    subscriberManager.attachAdministration(app);
+    require("./incident-reviews").attachReviews(app,{storage});
     const wrap=fn=>(req,res,next)=>Promise.resolve(fn(req,res)).catch(next);
     app.get("/api/admin/integrations",wrap(async(req,res)=>{
         if(req.adminUser.role!=="admin")return res.status(403).json({error:"Administrator access required."});
@@ -30,7 +38,7 @@ module.exports = function attachAdmin(app, { statusFile, monitor, key = process.
     }));
     app.get("/api/admin/approvals",wrap(async(req,res)=>{
         const items=JSON.parse(await storage.read("approvals")||"[]").filter(p=>req.adminUser.role==="admin"||p.author.id===req.adminUser.id);
-        res.json({items:items.slice(-100).reverse().map(p=>({...p,data:p.data?health.redact(p.data):undefined})),current:health.redact(JSON.parse(await storage.read("status")))});
+        res.json({items:items.slice(-100).reverse().map(p=>({...p,data:p.data?adminView(p.data,req.adminUser):undefined})),current:adminView(JSON.parse(await storage.read("status")),req.adminUser)});
     }));
     app.post("/api/admin/approvals/:id/:decision",wrap(async(req,res)=>{
         if(req.adminUser.role!=="admin")return res.status(403).json({error:"Only administrators can approve changes."});
@@ -59,7 +67,7 @@ module.exports = function attachAdmin(app, { statusFile, monitor, key = process.
     app.get("/api/admin/status", async (req, res, next) => {
         try {
             const raw = await storage.read("status");
-            res.json({ data: health.redact(JSON.parse(raw)), revision: revision(raw), editorVersion: 8 });
+            res.json({ data: adminView(JSON.parse(raw),req.adminUser), revision: revision(raw), editorVersion: 9 });
         } catch (error) { next(error); }
     });
     app.get("/api/admin/checks", async (req,res,next)=>{
@@ -81,6 +89,8 @@ module.exports = function attachAdmin(app, { statusFile, monitor, key = process.
                 !validText(s.name, 100) || !model.optionalText(s.description, 500) || !model.optionalText(s.group, 60) || (s.order !== undefined && (!Number.isInteger(s.order) || s.order < 0 || s.order > 9999)) || !states.has(s.status))) {
                 return res.status(400).json({ error: "Use unique service IDs, a name up to 100 characters, a description up to 500 characters, a group up to 60 characters, an order from 0 to 9999 and a valid status. Microsoft and retired service IDs are reserved." });
             }
+            try{require("../assets/service-metadata").validateServices(input.services);}catch(error){return res.status(400).json({error:error.message});}
+            if(req.adminUser.role!=="admin"&&input.services.some(s=>s.escalationContact!==undefined&&s.escalationContact.trim()!==(current.services.find(old=>old.id===s.id)?.escalationContact||"")))return res.status(403).json({error:"Only administrators can change private escalation contacts."});
             const monitors = new Map();
             try { for (const service of input.services) {
                 let config=service.monitor;
@@ -132,10 +142,10 @@ module.exports = function attachAdmin(app, { statusFile, monitor, key = process.
             const output = { ...current, publishedAt: now, announcement: announcement ? {title: announcement.title.trim(), message: announcement.message.trim(), level: announcement.level, expiresAt: announcement.expiresAt || ""} : null };
             output.services = input.services.map(s => ({
                 id: s.id, name: s.name.trim(), description: (s.description || "").trim(),
-                group: (s.group || "").trim(), order: s.order ?? 100, monitor: monitors.get(s.id),
+                group: (s.group || "").trim(), order: s.order ?? 100, ownerTeam:(s.ownerTeam||"").trim(), dependsOn:s.dependsOn||[], escalationContact:(s.escalationContact??current.services.find(old=>old.id===s.id)?.escalationContact??"").trim(), monitor: monitors.get(s.id),
                 status: s.status, statusText: labels[s.status], source: "PTG"
             }));
-            output.retiredServices = [...retired, ...current.services.filter(s => !ids.has(s.id)).map(s => ({ id: s.id, name: s.name, removedAt: now }))];
+            output.retiredServices = [...retired, ...current.services.filter(s => !ids.has(s.id)).map(s => ({ id: s.id, name: s.name, ownerTeam:s.ownerTeam||"", removedAt: now }))];
             const serviceName = i => output.services.find(s => s.id === i.serviceId)?.name ||
                 (current.incidents || []).find(old => old.id === i.id && old.serviceId === i.serviceId)?.service ||
                 current.services.find(s => s.id === i.serviceId)?.name || i.serviceId;
@@ -161,10 +171,10 @@ module.exports = function attachAdmin(app, { statusFile, monitor, key = process.
                 const item={id:randomUUID(),state:"pending",author:actor(req.adminUser),createdAt:now,baseRevision:revision(raw),data:output};
                 items.push(item);
                 await commit(storage,[update("approvals",rawApprovals,items)],req.adminUser,"publishing.submitted",item.id);
-                return res.status(202).json({pending:true,requestId:item.id,data:health.redact(current),revision:revision(raw)});
+                return res.status(202).json({pending:true,requestId:item.id,data:adminView(current,req.adminUser),revision:revision(raw)});
             }
             await commit(storage,[{name:"status",content,expectedRevision:revision(raw)}],req.adminUser,"status.published","status",output.services.filter(s=>JSON.stringify(s)!==JSON.stringify(current.services.find(old=>old.id===s.id))).map(s=>s.name+": "+(current.services.find(old=>old.id===s.id)?.status||"new")+" → "+s.status).join("; ")+ "; incidents: "+output.incidents.length+"; maintenance: "+output.maintenance.length);
-            res.json({ data: health.redact(output), revision: revision(content) });
+            res.json({ data: adminView(output,req.adminUser), revision: revision(content) });
         } catch (error) { next(error); }
         finally {
             writing = false;

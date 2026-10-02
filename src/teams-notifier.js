@@ -63,7 +63,7 @@ function createTeamsNotifier(options = {}) {
     const env = options.env || process.env;
     const config = configuration(env);
     const request = options.fetch || globalThis.fetch;
-    const stateFile = options.stateFile || env.TEAMS_STATE_FILE || path.join(__dirname, "teams-state.json");
+    const stateFile = options.stateFile || env.TEAMS_STATE_FILE || path.join(require("node:path").resolve(__dirname, ".."), "teams-state.json");
     let statePromise;
     let queue = Promise.resolve();
 

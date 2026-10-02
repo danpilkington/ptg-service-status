@@ -5,7 +5,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
-const { configuration, createTeamsNotifier } = require("../teams-notifier");
+const { configuration, createTeamsNotifier } = require("../src/teams-notifier");
 
 const webhookUrl = "https://prod-12.ukwest.logic.azure.com/workflows/test/triggers/manual/paths/invoke?api-version=2016-10-01";
 const env = { TEAMS_WEBHOOK_URL: webhookUrl, TEAMS_STATUS_PAGE_URL: "https://status.example.com/" };

@@ -9,12 +9,22 @@
     "Microsoft:sharepoint-online": {
       "active": false,
       "status": "operational",
-      "recoveredAt": "2026-09-23T13:36:32.977Z"
+      "ticketId": 1846,
+      "createdAt": "2026-10-01T18:06:20.135Z",
+      "recoveredAt": "2026-10-01T18:54:20.278Z",
+      "recoveryNoteAdded": true,
+      "recoveryStatus": 11,
+      "recoveryCompletedAt": "2026-10-01T18:54:21.024Z"
     },
     "Microsoft:onedrive": {
       "active": false,
       "status": "operational",
-      "recoveredAt": "2026-09-23T13:36:32.989Z"
+      "ticketId": 1847,
+      "createdAt": "2026-10-01T18:06:20.581Z",
+      "recoveredAt": "2026-10-01T18:54:21.042Z",
+      "recoveryNoteAdded": true,
+      "recoveryStatus": 11,
+      "recoveryCompletedAt": "2026-10-01T18:54:21.705Z"
     },
     "Microsoft:intune": {
       "active": false,
@@ -59,7 +69,12 @@
     "PTG:building-access-controls-fe4fbe1c": {
       "active": false,
       "status": "operational",
-      "recoveredAt": "2026-09-23T13:37:35.674Z"
+      "ticketId": 1838,
+      "createdAt": "2026-10-01T14:38:14.354Z",
+      "recoveredAt": "2026-10-01T14:38:54.286Z",
+      "recoveryNoteAdded": true,
+      "recoveryStatus": 11,
+      "recoveryCompletedAt": "2026-10-01T14:38:55.087Z"
     },
     "PTG:intune-dfed53e7": {
       "active": false,
@@ -159,12 +174,12 @@
     "PTG:epicor-reports-729bd7d6": {
       "active": false,
       "status": "operational",
-      "ticketId": 1768,
-      "createdAt": "2026-09-30T05:15:13.753Z",
-      "recoveredAt": "2026-09-30T05:16:13.593Z",
+      "ticketId": 1856,
+      "createdAt": "2026-10-02T05:11:21.902Z",
+      "recoveredAt": "2026-10-02T05:12:21.846Z",
       "recoveryNoteAdded": true,
       "recoveryStatus": 11,
-      "recoveryCompletedAt": "2026-09-30T05:16:14.246Z"
+      "recoveryCompletedAt": "2026-10-02T05:12:22.683Z"
     },
     "PTG:epicor-database-6966f287": {
       "active": false,

@@ -9,7 +9,7 @@ function conflict() {
     error.status = 409;
     return error;
 }
-const names = ["status", "users", "audit", "approvals", "availability"];
+const names = ["status", "users", "audit", "approvals", "availability", "subscriptions", "reviews"];
 function createFileStorage(statusFile, usersFile = process.env.USERS_FILE || path.join(path.dirname(statusFile), "users.json")) {
     const files = { status: statusFile, users: usersFile };
     for (const name of names.slice(2)) files[name] = path.join(path.dirname(statusFile), name + ".json");
@@ -113,7 +113,7 @@ function createSqlStorage(env = process.env) {
             } catch(error) {await transaction.rollback().catch(()=>{});throw error;}
         },
         async upgrade() {
-            await (await pool()).request().batch(await fs.readFile(path.join(__dirname,"database/features.sql"),"utf8"));
+            await (await pool()).request().batch(await fs.readFile(path.join(require("node:path").resolve(__dirname, ".."),"database/features.sql"),"utf8"));
         },
         async close() { if (connecting) { const connection = await connecting; connecting = null; await connection.close(); } }
     };

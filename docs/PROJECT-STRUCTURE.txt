@@ -1,0 +1,13 @@
+PROJECT STRUCTURE
+src/           Backend modules: authentication, incidents, storage and integrations.
+pages/         Status, information, maintenance, subscriptions and admin pages.
+assets/        Shared browser assets, including modules also used by the server.
+database/      SQL schema scripts.
+ops/           Backup, recovery, monitoring and deployment utilities.
+integrations/  Embeddable integration snippets.
+test/          Automated tests.
+docs/          Setup notes and feature documentation.
+
+server.js and database-setup.js remain root entry points so existing service and upgrade commands work. Package files, .env and IIS configuration also remain at the root. Runtime data and existing backups keep their current paths to preserve service state and recovery compatibility.
+
+Deploy src, assets, pages, docs, integrations, ops and the updated root entry points together. Restart the service. Then run ops/complete-structure-cleanup.ps1 on the server to archive obsolete root source files. The cleanup checks that the running server uses the new layout before moving anything. No database upgrade is required.

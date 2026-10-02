@@ -1,13 +1,13 @@
 "use strict";
 const {test}=require("node:test"),assert=require("node:assert/strict");
 const fs=require("node:fs/promises"),os=require("node:os"),path=require("node:path"),express=require("express");
-const {createFileStorage,revision}=require("../storage");
-const {sample,report}=require("../availability");
+const {createFileStorage,revision}=require("../src/storage");
+const {sample,report}=require("../src/availability");
 async function fixture(t){
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),"ptg-features-")),file=path.join(dir,"status.json");
  await fs.writeFile(file,JSON.stringify({services:[{id:"vpn",name:"VPN",status:"operational"}],incidents:[],maintenance:[]}));
  const storage=createFileStorage(file),mail=[],app=express();app.use(express.json());
- require("../admin-api")(app,{statusFile:file,storage,key:"feature-bootstrap-key-at-least-24",welcomeMailer:{configuration:()=>({ready:true}),send:async(user,link,event="created")=>{mail.push({user:structuredClone(user),link,event});return {status:"accepted",message:"Accepted"};}}});
+ require("../src/admin-api")(app,{statusFile:file,storage,key:"feature-bootstrap-key-at-least-24",welcomeMailer:{configuration:()=>({ready:true}),send:async(user,link,event="created")=>{mail.push({user:structuredClone(user),link,event});return {status:"accepted",message:"Accepted"};}}});
  app.use((e,req,res,next)=>res.status(e.status||500).json({error:e.message}));
  const server=app.listen(0,"127.0.0.1");await new Promise(r=>server.once("listening",r));
  t.after(async()=>{await new Promise(r=>server.close(r));for(const name of await fs.readdir(dir))await fs.unlink(path.join(dir,name));await fs.rmdir(dir);});
