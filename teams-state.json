@@ -42,8 +42,8 @@
     "PTG:print-server-62c94c74": {
       "active": false,
       "status": "operational",
-      "notifiedAt": "2026-10-01T03:51:54.019Z",
-      "recoveredAt": "2026-10-01T03:52:52.838Z"
+      "notifiedAt": "2026-10-05T09:00:41.570Z",
+      "recoveredAt": "2026-10-05T10:00:41.199Z"
     },
     "PTG:building-access-controls-fe4fbe1c": {
       "active": false,
