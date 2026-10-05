@@ -553,7 +553,7 @@
         const descriptions = { "company-portal": "PTG application and device enrolment experience", vpn: "Secure remote access to PTG resources", network: "PTG office connectivity", "meeting-rooms": "Room calendars, panels and meeting spaces", freshservice: "PTG IT support portal" };
         data.services.forEach(service => { service.description ??= descriptions[service.id] || ""; service.group ??= ""; service.order ??= 100; });
         baseline = structuredClone(data);
-        $("dashboard-refresh-seconds").value=String(data.dashboardRefreshSeconds||30);
+        $("dashboard-refresh-seconds").value=String(data.dashboardRefreshSeconds||30);$("maintenance-reminders-enabled").checked=data.maintenanceRemindersEnabled===true;
         publishedIds = new Set(data.incidents.map(i => i.id));
         $("connection").hidden = true; $("editor").hidden = false;
         $("published").textContent = format(data.publishedAt); $("published").dateTime = data.publishedAt;
@@ -570,6 +570,7 @@
         finally {
             busy = false;
             document.querySelectorAll("button, input, select, textarea").forEach(el => el.disabled = false);
+            document.querySelectorAll("[data-report-disabled]").forEach(el=>el.disabled=el.dataset.reportDisabled==="true");
             $("publish").disabled = !dirty;
             if($("review-save"))$("review-save").disabled=$("review-save").dataset.resolved==="false";
         }
@@ -602,7 +603,7 @@
         accountRole=user.role;
         await loadIntegrations();
         $("microsoft-controls-nav").hidden=!admin;$("device-compliance-nav").hidden=!admin;$("mfa-registration-nav").hidden=!admin;
-        if(admin)await microsoftViews.load();
+        if(admin){await microsoftViews.load();operations.show();await operations.overview();}
         $("audit-nav").hidden=!admin;$("subscribers-nav").hidden=!admin;$("reviews-nav").hidden=!admin;
         $("publish").textContent=admin?"Publish changes":"Submit for approval";
         const selectedTab=document.querySelector("[data-admin-tab][aria-selected=true]");
@@ -698,7 +699,7 @@
         clearRecovery(); credentialEdits.clear();
         $("service-api-key").value="";$("service-api-auth").value="";
         accountRequest("logout", "POST").catch(() => {});
-        clearManagementViews(); microsoftViews.clear(); key = ""; data = null; baseline = null; revision = ""; dirty = false; publicIssues = []; changedForms.clear();
+        clearManagementViews(); microsoftViews.clear();operations.clear(); key = ""; data = null; baseline = null; revision = ""; dirty = false; publicIssues = []; changedForms.clear();
         document.querySelector("[data-integration-panel]").hidden=true; $("integration-health").replaceChildren();
         $("editor").hidden = true; $("connection").hidden = false; $("admin-key").value = "";
         $("published").textContent = "Connect to load"; $("published").removeAttribute("datetime");
@@ -707,6 +708,7 @@
     });
     $("preview").addEventListener("click", () => {
         const container = $("preview-content"); container.replaceChildren();
+        const banner=text("p","Draft preview — these changes are not yet published.","help");container.append(banner);
         if (data.announcement) container.append(text("h3", "Announcement · " + data.announcement.level), text("p", data.announcement.title + "\n" + data.announcement.message), text("p", "Expires: " + format(data.announcement.expiresAt)));
         container.append(text("h3", "Service availability"));
         data.services.forEach(s => container.append(text("p", s.name + ": " + labels[s.status])));
@@ -717,12 +719,19 @@
                 const article = text("article", "", "incident");
                 article.append(text("h4", item.title || item.id), text("p", item.message || item.note || ""),
                     text("p", [phases[item.phase], impacts[item.impact]].filter(Boolean).join(" · ")));
+                if(item.start)article.append(text("p","Starts: "+format(item.start)));if(item.end)article.append(text("p","Ends: "+format(item.end)));
                 if (item.workaround) article.append(text("p", "Workaround: " + item.workaround));
                 if (item.nextUpdateAt) article.append(text("p", "Next update: " + format(item.nextUpdateAt)));
                 if (item.pendingUpdate) article.append(text("p", "New timeline update: " + item.pendingUpdate));
                 container.append(article);
             });
         }
+        if(!window.PTGNotices)return feedback("Restart the server to enable updated public previews.",true);
+        const frame=document.createElement("iframe");frame.title="Public notice preview";frame.setAttribute("sandbox","");frame.className="public-draft-preview";
+        const e=value=>String(value||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+        const notices=data.incidents.map(i=>({...i,service:data.services.find(s=>s.id===i.serviceId)?.name||i.serviceId,updates:[...(i.updates||[]),...(i.pendingUpdate?[{message:i.pendingUpdate,phase:i.phase,at:new Date().toISOString()}]:[])]}));
+        frame.srcdoc='<!doctype html><html><head><meta name="viewport" content="width=device-width"><link rel="stylesheet" href="/style.css"><style>body{padding:18px;background:#f3f6fa}section{margin-bottom:20px}.panel{min-height:0}</style></head><body>'+(data.announcement?'<section class="announcement"><h2>'+e(data.announcement.title)+'</h2><p>'+e(data.announcement.message)+'</p></section>':'')+'<section class="panel"><h2>Current incidents</h2>'+window.PTGNotices.renderItems(notices.filter(i=>i.phase!=="resolved"),"incidents")+'</section><section class="panel"><h2>Maintenance</h2>'+window.PTGNotices.renderItems(data.maintenance,"maintenance")+'</section></body></html>';
+        container.replaceChildren(text("p","Draft public notice preview. These changes are not yet published.","help"),frame);
         $("preview-dialog").showModal();
     });
 
@@ -909,9 +918,9 @@
         event.preventDefault();
         if(hasUnsaved())return feedback("Publish or discard your other edits before changing the refresh interval.",true);
         run(async()=>{
-            const response=await fetch("/api/admin/dashboard-refresh",{method:"PUT",headers:{Authorization:"Bearer "+key,"Content-Type":"application/json"},body:JSON.stringify({seconds:Number($("dashboard-refresh-seconds").value),revision})});
+            const response=await fetch("/api/admin/dashboard-refresh",{method:"PUT",headers:{Authorization:"Bearer "+key,"Content-Type":"application/json"},body:JSON.stringify({seconds:Number($("dashboard-refresh-seconds").value),maintenanceRemindersEnabled:$("maintenance-reminders-enabled").checked,revision})});
             const result=await response.json();if(!response.ok)throw new Error(result.error||"Refresh interval could not be saved.");
-            data=result.data;revision=result.revision;render();$("dashboard-refresh-feedback").textContent="Saved. Open dashboards apply this interval on their next refresh.";
+            data=result.data;revision=result.revision;render();$("dashboard-refresh-feedback").textContent="Dashboard controls saved. The refresh interval applies on the next dashboard refresh.";
         });
     });
     $("refresh-integrations")?.addEventListener("click",()=>void loadIntegrations());
@@ -1090,6 +1099,7 @@
     });
     else if (ssoResult) feedback(ssoResult === "denied" ? "Your Microsoft account is not authorised. Contact IT Support to link and enable your account." : "Microsoft sign-in could not be completed. Please try again.", true);
     const microsoftViews=window.PTGMicrosoftAdmin({$,accountRequest,run,text,format,hasOtherEdits:()=>dirty||changedForms.size>0||!!management?.dirty(),afterSave:async()=>{await load();}});
+    const operations=window.PTGOperations?window.PTGOperations({$,text,run,accountRequest,format,getKey:()=>key}):{show(){},clear(){},overview:async()=>{}};
 })();
 
 

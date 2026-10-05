@@ -36,3 +36,13 @@ test("visitor refreshes cannot bypass the one-minute email delivery limit",async
     const f=fixture(),s=createSubscriptions({...f.options,deliveryIntervalMs:60000});await s.reconcile({});await s.request("person@example.com",["vpn"]);await s.confirm(confirmation(f));await s.reconcile(event());assert.equal(f.messages.length,2);
     await s.reconcile(event("Second update","identified"));assert.equal(f.messages.length,2);assert.equal(f.read().queue.length,1);
 });
+
+test("maintenance reminders are opt-in, deduplicated, confirmed-only and skip cancelled work",async()=>{
+ const f=fixture(),api=createSubscriptions(f.options);await api.request("person@example.com",["vpn"]);await api.confirm(confirmation(f));
+ const maintenance=[{id:"work",serviceId:"vpn",title:"Upgrade",message:"Brief interruption",start:new Date(Date.now()+2*3600000).toISOString(),end:new Date(Date.now()+3*3600000).toISOString()}];
+ await api.reconcile({maintenance,maintenanceRemindersEnabled:false});assert.equal(f.messages.length,1);
+ await api.reconcile({maintenance,maintenanceRemindersEnabled:true});assert.equal(f.messages.length,2);assert.match(f.messages.at(-1).subject,/Maintenance reminder/);
+ await api.reconcile({maintenance,maintenanceRemindersEnabled:true});assert.equal(f.messages.length,2);
+ const state=f.read();state.queue.push({id:"cancelled",subscriberId:state.subscribers[0].id,event:{id:"removed",serviceId:"vpn",title:"Cancelled work",updates:[],start:new Date(Date.now()+10000).toISOString()},reminder:true,attempts:0,nextAttempt:0});f.write(state);
+ await api.reconcile({maintenance,maintenanceRemindersEnabled:true});assert.equal(f.read().queue.length,0);assert.equal(f.messages.length,2);
+});

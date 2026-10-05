@@ -159,6 +159,7 @@
     }
 
     function renderItems(items, type) {
+        if(window.PTGNotices)return window.PTGNotices.renderItems(items,type);
         if (!items?.length) {
             const empty = {
                 incidents: ["No confirmed PTG incidents", "Microsoft-reported notices are listed separately below."],

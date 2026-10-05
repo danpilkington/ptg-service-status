@@ -29,6 +29,7 @@ module.exports = function attachAdmin(app, { statusFile, monitor, key = process.
         const raw=await storage.read("status");
         if(req.body.revision!==revision(raw))return res.status(409).json({error:"Status has changed. Reload before saving the refresh interval."});
         const current=JSON.parse(raw);current.dashboardRefreshSeconds=seconds;
+        if(req.body.maintenanceRemindersEnabled!==undefined){if(typeof req.body.maintenanceRemindersEnabled!=="boolean")return res.status(400).json({error:"Invalid reminder setting."});current.maintenanceRemindersEnabled=req.body.maintenanceRemindersEnabled;}
         await commit(storage,[update("status",raw,current)],req.adminUser,"dashboard.refresh","dashboard",String(seconds)+" seconds");
         res.json({data:adminView(current,req.adminUser),revision:revision(JSON.stringify(current,null,2)+"\n")});
     }));

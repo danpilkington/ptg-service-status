@@ -57,16 +57,25 @@ function create(storage,{env=process.env,request=global.fetch,clock=Date.now,cre
         const policy=await config();if(!policy.groupAccess)return null;
         const access=await role(claims.oid.toLowerCase(),policy);if(!access)return null;
         const info=await profile(claims.oid.toLowerCase());
-        return {...({id:"entra:"+claims.oid.toLowerCase(),username:claims.oid.toLowerCase(),firstName:String(claims.name||"Microsoft user").slice(0,100),lastName:"",jobTitle:info.jobTitle,active:true,entraObjectId:claims.oid.toLowerCase()}),role:access,groupManaged:true};
+        return {...({id:"entra:"+claims.oid.toLowerCase(),username:claims.oid.toLowerCase(),firstName:String(claims.name||"Microsoft user").slice(0,100),lastName:"",jobTitle:info.jobTitle,active:true,entraObjectId:claims.oid.toLowerCase()}),role:access,groupManaged:true,access:{groupId:access==="admin"?policy.adminGroupId:policy.editorGroupId,verifiedAt:new Date(members.get(claims.oid.toLowerCase()+":"+policy.adminGroupId+":"+policy.editorGroupId)?.expires-60000||clock()).toISOString()}};
+    }
+    let deviceRows=[],mfaRows=[];
+    async function trend(kind,summary){
+        if(!storage.write)return;
+        await require("./governance").serial(storage,async()=>{
+            const raw=await storage.read("insights"),value=JSON.parse(raw||"{}");const day=summary.checkedAt.slice(0,10);
+            value[kind]=[...(value[kind]||[]).filter(r=>r.day!==day&&r.day>=new Date(clock()-365*86400000).toISOString().slice(0,10)),{day,checkedAt:summary.checkedAt,counts:summary.counts}].sort((a,b)=>a.day.localeCompare(b.day));
+            await storage.write("insights",JSON.stringify(value),revision(raw));
+        }).catch(()=>{});
     }
     async function devices(){
         const policy=await config();if(!policy.devicesEnabled)return {enabled:false,message:"Enable the device compliance overview in Microsoft controls."};
         if(nextDeviceAttempt>clock()&&lastThreshold===policy.staleDays)return {enabled:true,available:!!last,stale:lastFailed,...(last||{}),message:lastFailed?"The latest device refresh failed. Showing the last successful snapshot.":""};
         if(!deviceJob)deviceJob=(async()=>{
             nextDeviceAttempt=clock()+300000;lastThreshold=policy.staleDays;
-            try{let url="/v1.0/deviceManagement/managedDevices?$select=id,operatingSystem,complianceState,lastSyncDateTime&$top=999",all=[],pages=0;const seen=new Set();
+            try{let url="/v1.0/deviceManagement/managedDevices?$select=id,deviceName,operatingSystem,complianceState,lastSyncDateTime&$top=999",all=[],pages=0;const seen=new Set();
                 while(url){if(++pages>100||seen.has(url)||all.length>100000)throw Error("The device overview exceeded its safe paging limit.");seen.add(url);const data=await graph(url);if(!Array.isArray(data.value))throw Error("Invalid device response.");all.push(...data.value);url=data["@odata.nextLink"];}
-                last=summarize([...new Map(all.map(d=>[d.id,d])).values()],policy.staleDays,clock());lastFailed=false;
+                deviceRows=[...new Map(all.map(d=>[d.id,d])).values()].map(d=>({id:d.id,name:d.deviceName||d.id,operatingSystem:d.operatingSystem||"Unknown",complianceState:d.complianceState||"unknown",lastSyncDateTime:d.lastSyncDateTime||null}));last=summarize(deviceRows,policy.staleDays,clock());lastFailed=false;await trend("devices",last);
             }catch{lastFailed=true;nextDeviceAttempt=clock()+60000;}
             return {enabled:true,available:!!last,stale:lastFailed,...(last||{}),message:lastFailed?(last?"The latest device refresh failed. Showing the last successful snapshot.":"Device data is unavailable. Check DeviceManagementManagedDevices.Read.All application permission, admin consent, Azure credentials and Intune licensing."):""};
         })().finally(()=>{deviceJob=null;});return deviceJob;
@@ -76,7 +85,7 @@ function create(storage,{env=process.env,request=global.fetch,clock=Date.now,cre
         if(!(await config()).mfaEnabled)return {enabled:false,message:"Enable MFA registration reporting in Microsoft controls."};
         const result=()=>({enabled:true,available:!!mfaLast,stale:mfaFailed,...(mfaLast||{}),message:mfaFailed?(mfaLast?"Latest refresh failed. Showing the last successful MFA snapshot.":"MFA report unavailable. Check AuditLog.Read.All application permission, admin consent and tenant reporting licensing."):""});
         if(nextMfaAttempt>clock())return result();
-        if(!mfaJob)mfaJob=(async()=>{nextMfaAttempt=clock()+300000;try{let url="/v1.0/reports/authenticationMethods/userRegistrationDetails",all=[],pages=0;const seen=new Set();while(url){if(++pages>100||seen.has(url)||all.length>100000)throw Error("MFA paging limit exceeded.");seen.add(url);const data=await graph(url);if(!Array.isArray(data.value))throw Error("Invalid MFA report.");all.push(...data.value);url=data["@odata.nextLink"];}mfaLast=summarizeMfa([...new Map(all.map(r=>[r.id,r])).values()],clock());mfaFailed=false;}catch{mfaFailed=true;nextMfaAttempt=clock()+60000;}return result();})().finally(()=>{mfaJob=null;});return mfaJob;
+        if(!mfaJob)mfaJob=(async()=>{nextMfaAttempt=clock()+300000;try{let url="/v1.0/reports/authenticationMethods/userRegistrationDetails",all=[],pages=0;const seen=new Set();while(url){if(++pages>100||seen.has(url)||all.length>100000)throw Error("MFA paging limit exceeded.");seen.add(url);const data=await graph(url);if(!Array.isArray(data.value))throw Error("Invalid MFA report.");all.push(...data.value);url=data["@odata.nextLink"];}mfaRows=[...new Map(all.map(r=>[r.id,r])).values()].map(r=>({id:r.id,name:r.userDisplayName||r.id,username:r.userPrincipalName||"",registered:r.isMfaRegistered===true?true:r.isMfaRegistered===false?false:null,capable:r.isMfaCapable===true,passwordless:r.isPasswordlessCapable===true,methods:Array.isArray(r.methodsRegistered)?r.methodsRegistered:[],...r}));mfaLast=summarizeMfa(mfaRows,clock());mfaFailed=false;await trend("mfa",mfaLast);}catch{mfaFailed=true;nextMfaAttempt=clock()+60000;}return result();})().finally(()=>{mfaJob=null;});return mfaJob;
     }
     function attach(app){const wrap=fn=>(req,res,next)=>Promise.resolve(fn(req,res)).catch(next),admin=(req,res,next)=>req.adminUser.role==="admin"?next():res.status(403).json({error:"Administrator access required."});
         app.get("/api/admin/microsoft-controls",admin,wrap(async(req,res)=>{const raw=await storage.read("status");res.json({settings:settings(JSON.parse(raw)),revision:revision(raw),credentialsReady:ready});}));
@@ -87,6 +96,19 @@ function create(storage,{env=process.env,request=global.fetch,clock=Date.now,cre
             const data=JSON.parse(raw);data.microsoftAdmin=value;
             await commit(storage,[update("status",raw,data)],req.adminUser,"microsoft.controls","admin",JSON.stringify(value));members.clear();nextDeviceAttempt=0;nextMfaAttempt=0;
             res.json({settings:value,revision:revision(JSON.stringify(data,null,2)+"\n"),credentialsReady:ready});
+        }));
+        app.get("/api/admin/security-trends",admin,wrap(async(req,res)=>res.json(JSON.parse(await storage.read("insights")||"{}"))));
+        for(const kind of ["devices","mfa"])app.get("/api/admin/"+kind+"-details",admin,wrap(async(req,res)=>{
+            const snapshot=await(kind==="devices"?devices():mfa());if(!snapshot.enabled||!snapshot.available)return res.json({...snapshot,items:[],total:0});
+            const query=String(req.query.search||"").toLowerCase().slice(0,200),filter=String(req.query.filter||"all");
+            let rows=(kind==="devices"?deviceRows:mfaRows.map(r=>({id:r.id,name:r.name,username:r.username,registered:r.registered,capable:r.capable,passwordless:r.passwordless,methods:r.methods}))).filter(r=>JSON.stringify(r).toLowerCase().includes(query));
+            if(filter!=="all")rows=rows.filter(r=>kind==="devices"?(filter==="stale"?Number.isFinite(Date.parse(r.lastSyncDateTime))&&Date.parse(r.lastSyncDateTime)>Date.UTC(1970,0,2)&&Date.parse(r.lastSyncDateTime)<clock()-(snapshot.staleDays||7)*86400000:filter==="never"?!Number.isFinite(Date.parse(r.lastSyncDateTime))||Date.parse(r.lastSyncDateTime)<=Date.UTC(1970,0,2):r.complianceState===filter):(filter==="missing"?r.registered===false:filter==="registered"?r.registered===true:r.registered===null));
+            if(req.query.download==="csv"){
+                const fields=kind==="devices"?["name","operatingSystem","complianceState","lastSyncDateTime"]:["name","username","registered","capable","passwordless","methods"];
+                const cell=v=>'"'+String(Array.isArray(v)?v.join("; "):v??"").replace(/^[\t\r\n ]*[=+@-]/,"'$&").replace(/"/g,'""')+'"';
+                res.set("Content-Disposition",'attachment; filename="'+kind+'-details.csv"').type("text/csv").send([fields.join(","),...rows.map(r=>fields.map(f=>cell(r[f])).join(","))].join("\r\n"));return;
+            }
+            const offset=Math.max(0,Number(req.query.offset)||0);res.json({available:true,stale:snapshot.stale,checkedAt:snapshot.checkedAt,items:rows.slice(offset,offset+50),total:rows.length,offset});
         }));
         app.get("/api/admin/mfa-registration",admin,wrap(async(req,res)=>res.json(await mfa())));
         app.get("/api/admin/device-compliance",admin,wrap(async(req,res)=>res.json(await devices())));

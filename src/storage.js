@@ -9,7 +9,7 @@ function conflict() {
     error.status = 409;
     return error;
 }
-const names = ["status", "users", "audit", "approvals", "availability", "subscriptions", "reviews"];
+const names = ["status", "users", "audit", "approvals", "availability", "subscriptions", "reviews", "insights"];
 function createFileStorage(statusFile, usersFile = process.env.USERS_FILE || path.join(path.dirname(statusFile), "users.json")) {
     const files = { status: statusFile, users: usersFile };
     for (const name of names.slice(2)) files[name] = path.join(path.dirname(statusFile), name + ".json");

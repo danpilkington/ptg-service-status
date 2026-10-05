@@ -120,8 +120,8 @@
     "PTG:epicor-reports-729bd7d6": {
       "active": false,
       "status": "operational",
-      "notifiedAt": "2026-10-02T05:11:21.907Z",
-      "recoveredAt": "2026-10-02T05:12:21.847Z"
+      "notifiedAt": "2026-10-05T05:11:38.191Z",
+      "recoveredAt": "2026-10-05T05:12:39.041Z"
     },
     "PTG:epicor-database-6966f287": {
       "active": false,
@@ -168,9 +168,10 @@
       "recoveredAt": "2026-09-25T10:54:18.577Z"
     },
     "PTG:hypermill-1f759485": {
-      "active": true,
-      "status": "degraded",
-      "notifiedAt": "2026-10-01T07:24:40.178Z"
+      "active": false,
+      "status": "operational",
+      "notifiedAt": "2026-10-01T07:24:40.178Z",
+      "recoveredAt": "2026-10-05T07:15:52.626Z"
     },
     "PTG:entra-connect-sync-73ec9be4": {
       "active": false,

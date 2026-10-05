@@ -102,11 +102,11 @@ const publicFiles = new Map([
     ["/subscriptions.html", "pages/subscriptions/index.html"],
     ["/app.js", "pages/status/app.js"], ["/public-ui.js", "pages/status/public-ui.js"],
     ["/subscriptions-ui.js", "pages/subscriptions/subscriptions-ui.js"],
-    ["/style.css", "assets/style.css"], ["/dashboard-summary.js", "assets/dashboard-summary.js"],
+    ["/style.css", "assets/style.css"], ["/notice-renderer.js", "assets/notice-renderer.js"], ["/dashboard-summary.js", "assets/dashboard-summary.js"],
     ["/maintenance-calendar.js", "assets/maintenance-calendar.js"], ["/service-metadata.js", "assets/service-metadata.js"],
     ["/admin/", "pages/admin/index.html"], ["/admin/index.html", "pages/admin/index.html"],
     ["/admin/style.css", "pages/admin/style.css"], ["/admin/app.js", "pages/admin/app.js"],
-    ["/admin/management.js", "pages/admin/management.js"], ["/admin/microsoft.js", "pages/admin/microsoft.js"],
+    ["/admin/management.js", "pages/admin/management.js"], ["/admin/microsoft.js", "pages/admin/microsoft.js"], ["/admin/operations.js", "pages/admin/operations.js"],
 
 ]);
 app.get(/^\/admin$/, (req, res) => res.redirect(302, "/admin/"));
@@ -244,6 +244,7 @@ async function readLocalStatus() {
     const data = JSON.parse(content);
 
     return {
+        maintenanceRemindersEnabled: data.maintenanceRemindersEnabled===true,
         dashboardRefreshSeconds: data.dashboardRefreshSeconds,
         announcement: data.announcement || null,
         publishedAt: data.publishedAt || new Date().toISOString(),
@@ -542,6 +543,7 @@ app.get("/api/status", async (request, response) => {
     const assessedMicrosoftIncidents = applyAssessments(microsoftIncidents, localStatus.microsoftAssessments);
     const localIncidents = localStatus.incidents.map(normaliseIncident);
     const responseBody = {
+        maintenanceRemindersEnabled: localStatus.maintenanceRemindersEnabled,
         dashboardRefreshSeconds: [15,30,60,120,300].includes(localStatus.dashboardRefreshSeconds) ? localStatus.dashboardRefreshSeconds : 30,
         checkedAt: new Date().toISOString(),
         publishedAt: localStatus.publishedAt,
@@ -619,7 +621,7 @@ if (require.main === module) {
                     if(automation.running)return; automation.running=true;automation.started=true;
                     try { await fetch(`http://${internalHost}:${server.address().port}/api/status`, { signal: AbortSignal.timeout(30000) })
                     .then(response => { if (!response.ok) throw new Error("status endpoint returned HTTP " + response.status); })
-                    .then(()=>{automation.error=false;})
+                    .then(async()=>{automation.error=false;const reports=require("./src/microsoft-admin").forStorage(storage);await Promise.allSettled([reports.devices(),reports.mfa()]);})
                     .catch(error=>{automation.error=true;console.error("Status automation refresh failed:",error.message);});
                     } finally {automation.running=false;automation.lastCompletedAt=new Date().toISOString();}
                 };

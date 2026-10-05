@@ -54,7 +54,11 @@ function createSubscriptions({storage,mailer=require("./subscription-mail").crea
         if(!enabled||running)return;running=true;summary.lastAttemptAt=new Date().toISOString();
         try{
             await locked(async()=>{
-                const {raw,value}=await read(),current=events(data),seen={};
+                const {raw,value}=await read(),current=events(data),seen={};let remindersChanged=false;
+                value.reminders ||= {};
+                for(const [id,at]of Object.entries(value.reminders))if(at<Date.now()-14*86400000)delete value.reminders[id];
+                if(data.maintenanceRemindersEnabled){for(const item of data.maintenance||[]){const remaining=Date.parse(item.start)-Date.now();if(!Number.isFinite(remaining)||remaining<=0||remaining>86400000||item.source==="Microsoft"&&item.impact!=="confirmed")continue;const hours=remaining<=3600000?1:24;const id=item.id+":"+item.start+":"+hours;
+                    for(const sub of value.subscribers.filter(s=>s.active&&!s.paused&&s.services.includes(item.serviceId))){const key=id+":"+sub.id;if(value.reminders[key])continue;if(value.queue.length>=50000)throw Error("Subscription outbox is full.");value.reminders[key]=Date.now();value.queue.push({id:randomUUID(),subscriberId:sub.id,event:{id:item.id,serviceId:item.serviceId,title:"Maintenance reminder: "+item.title,message:"Scheduled start: "+item.start+"\nScheduled end: "+item.end+"\n\n"+(item.message||""),phase:"maintenance",updates:[],start:item.start,end:item.end},reminder:true,attempts:0,nextAttempt:0,createdAt:Date.now()});remindersChanged=true;}}}
                 for(const event of current){
                     const hash=digest(JSON.stringify(event));seen[event.id]=hash;
                     if(data.microsoftStale&&event.source==="Microsoft"){seen[event.id]=value.seen[event.id]||hash;continue;}
@@ -64,7 +68,7 @@ function createSubscriptions({storage,mailer=require("./subscription-mail").crea
                         value.queue.push({id:randomUUID(),subscriberId:sub.id,event,attempts:0,nextAttempt:0,createdAt:Date.now()});
                     }
                 }
-                const changed=!value.initialised||JSON.stringify(value.seen)!==JSON.stringify(seen);
+                const changed=remindersChanged||!value.initialised||JSON.stringify(value.seen)!==JSON.stringify(seen);
                 value.seen=seen;value.initialised=true;if(changed)await save(raw,value);
             });
             const jobs=await locked(async()=>{const {value}=await read();return Date.now()-lastDeliveryStartedAt<deliveryIntervalMs?[]:value.queue.filter(j=>j.nextAttempt<=Date.now()).slice(0,20).map(j=>j.id);});
@@ -74,6 +78,7 @@ function createSubscriptions({storage,mailer=require("./subscription-mail").crea
                     const {raw,value}=await read(),job=value.queue.find(j=>j.id===id&&j.nextAttempt<=Date.now());if(!job)return null;
                     const sub=value.subscribers.find(s=>s.id===job.subscriberId&&s.active&&!s.paused&&s.services.includes(job.event.serviceId));
                     if(!sub){value.queue=value.queue.filter(j=>j.id!==id);await save(raw,value);return null;}
+                    if(job.reminder&&(!data.maintenanceRemindersEnabled||!data.maintenance?.some(item=>item.id===job.event.id&&item.start===job.event.start&&Date.parse(item.start)>Date.now()))){value.queue=value.queue.filter(j=>j.id!==id);await save(raw,value);return null;}
                     const token=randomBytes(32).toString("hex");sub.unsubscribeHashes=[...(sub.unsubscribeHashes||[]),digest(token)].slice(-100);
                     // Claim before sending, allowing confirmation/unsubscribe requests while Graph is slow.
                     job.nextAttempt=Date.now()+120000;await save(raw,value);return {email:sub.email,event:job.event,token};

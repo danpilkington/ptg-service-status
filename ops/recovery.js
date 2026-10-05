@@ -3,7 +3,7 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const { randomBytes, createCipheriv, createDecipheriv, createHash, scryptSync } = require("node:crypto");
 const root = path.join(__dirname, "..");
-const documents = ["status", "users", "audit", "approvals", "availability", "subscriptions", "reviews"];
+const documents = ["status", "users", "audit", "approvals", "availability", "subscriptions", "reviews", "insights"];
 const optionalFiles = { "freshservice-state.json":"FRESHSERVICE_STATE_FILE", "teams-state.json":"TEAMS_STATE_FILE", "microsoft-cache.json":"MICROSOFT_CACHE_FILE" };
 const settingsFiles = [".env", "package.json", "package-lock.json", "web.config", "start-pm2.cmd"];
 const allowedNames = new Set([...documents.map(n=>"documents/"+n+".json"),...Object.keys(optionalFiles).map(n=>"state/"+n),...settingsFiles.map(n=>"configuration/"+n),"configuration/runtime.json"]);
@@ -21,14 +21,14 @@ function encrypt(bundle, password) {
     return Buffer.concat([magic,salt,iv,cipher.getAuthTag(),data]);
 }
 function validate(bundle) {
-    if(!bundle||![1,2,3].includes(bundle.version)||!["file","sql"].includes(bundle.storage)||!Number.isFinite(Date.parse(bundle.createdAt))||!Array.isArray(bundle.files)||bundle.files.length>allowedNames.size)throw new Error("Invalid backup manifest.");
+    if(!bundle||![1,2,3,4].includes(bundle.version)||!["file","sql"].includes(bundle.storage)||!Number.isFinite(Date.parse(bundle.createdAt))||!Array.isArray(bundle.files)||bundle.files.length>allowedNames.size)throw new Error("Invalid backup manifest.");
     const seen=new Set();
     for(const file of bundle.files){
         if(!file||!allowedNames.has(file.name)||seen.has(file.name)||typeof file.content!=="string"||file.sha256!==digest(file.content))throw new Error("Backup file integrity or manifest validation failed.");
         seen.add(file.name);
         if(file.name.endsWith(".json"))JSON.parse(file.content);
     }
-    for(const name of documents.filter(n=>n==="reviews"?bundle.version>=3:n==="subscriptions"?bundle.version>=2:true))if(!seen.has("documents/"+name+".json"))throw new Error("Backup is missing a required storage document.");
+    for(const name of documents.filter(n=>n==="insights"?bundle.version>=4:n==="reviews"?bundle.version>=3:n==="subscriptions"?bundle.version>=2:true))if(!seen.has("documents/"+name+".json"))throw new Error("Backup is missing a required storage document.");
     const status=JSON.parse(bundle.files.find(f=>f.name==="documents/status.json").content);
     if(!status||!Array.isArray(status.services)||!Array.isArray(status.incidents)||!Array.isArray(status.maintenance))throw new Error("Backup status data is invalid.");
     for(const name of ["users","audit","approvals"]){if(!Array.isArray(JSON.parse(bundle.files.find(f=>f.name==="documents/"+name+".json").content)))throw new Error("Backup "+name+" data is invalid.");}
@@ -49,7 +49,7 @@ async function collect({storage,baseDir=root,env=process.env,siteStopped=false})
     for(const name of documents){
         const content=await storage.read(name);
         if(name==="status"&&!content)throw new Error("Status storage is missing.");
-        add("documents/"+name+".json",content??(name==="availability"?"null":"[]"));
+        add("documents/"+name+".json",content??(name==="availability"?"null":name==="insights"?"{}":"[]"));
     }
     for(const [name,setting] of Object.entries(optionalFiles)){
         try{add("state/"+name,await fs.readFile(env[setting]||path.join(baseDir,name),"utf8"));}
@@ -61,12 +61,12 @@ async function collect({storage,baseDir=root,env=process.env,siteStopped=false})
     names.push("STATUS_FILE","USERS_FILE","MICROSOFT_CACHE_FILE","MONITOR_ALLOWED_CIDRS");
     add("configuration/runtime.json",JSON.stringify(Object.fromEntries([...new Set(names)].filter(n=>env[n]!==undefined).map(n=>[n,env[n]])),null,2));
     // Confirm no storage or state changed during export. The stopped-site requirement also covers actions in flight.
-    for(const name of documents){const current=await storage.read(name);const saved=files.find(f=>f.name==="documents/"+name+".json").content;if((current??(name==="availability"?"null":"[]"))!==saved)throw new Error("Storage changed during backup. Stop the application and retry.");}
+    for(const name of documents){const current=await storage.read(name);const saved=files.find(f=>f.name==="documents/"+name+".json").content;if((current??(name==="availability"?"null":name==="insights"?"{}":"[]"))!==saved)throw new Error("Storage changed during backup. Stop the application and retry.");}
     for(const [name,setting] of Object.entries(optionalFiles)){
         let current=null;try{current=await fs.readFile(env[setting]||path.join(baseDir,name),"utf8");}catch(error){if(error.code!=="ENOENT")throw error;}
         if(current!==(files.find(f=>f.name==="state/"+name)?.content??null))throw new Error("Notification/cache state changed during backup. Stop the application and retry.");
     }
-    return validate({version:3,createdAt:new Date().toISOString(),storage:storage.kind,files});
+    return validate({version:4,createdAt:new Date().toISOString(),storage:storage.kind,files});
 }
 async function readArchive(file,password){const stat=await fs.stat(file);if(stat.size>maxBytes+52)throw new Error("Backup exceeds the 100 MB limit.");return decrypt(await fs.readFile(file),password);}
 function summary(bundle){

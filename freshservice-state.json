@@ -174,12 +174,12 @@
     "PTG:epicor-reports-729bd7d6": {
       "active": false,
       "status": "operational",
-      "ticketId": 1856,
-      "createdAt": "2026-10-02T05:11:21.902Z",
-      "recoveredAt": "2026-10-02T05:12:21.846Z",
+      "ticketId": 1925,
+      "createdAt": "2026-10-05T05:11:38.190Z",
+      "recoveredAt": "2026-10-05T05:12:39.041Z",
       "recoveryNoteAdded": true,
       "recoveryStatus": 11,
-      "recoveryCompletedAt": "2026-10-02T05:12:22.683Z"
+      "recoveryCompletedAt": "2026-10-05T05:12:39.715Z"
     },
     "PTG:epicor-database-6966f287": {
       "active": false,

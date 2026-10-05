@@ -17,6 +17,20 @@ function validReview(input){
 function attachReviews(app,{storage}){
     const wrap=fn=>(req,res,next)=>Promise.resolve(fn(req,res)).catch(next);
     app.use("/api/admin/incident-reviews",(req,res,next)=>{if(req.adminUser.role!=="admin")return res.status(403).json({error:"Administrator access required."});next();});
+    app.get("/api/admin/action-dashboard",wrap(async(req,res)=>{
+        if(req.adminUser.role!=="admin")return res.sendStatus(403);
+        const status=JSON.parse(await storage.read("status")),raw=await storage.read("reviews"),reviews=JSON.parse(raw||"{}");
+        const today=new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/London",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+        const items=Object.entries(reviews).flatMap(([id,r])=>(r.actions||[]).map((a,index)=>({...a,incidentId:id,index,incidentTitle:status.incidents?.find(i=>i.id===id)?.title||id,overdue:!a.completed&&!!a.dueDate&&a.dueDate<today})));
+        res.json({items,revision:revision(raw)});
+    }));
+    app.put("/api/admin/action-dashboard/:id/:index",wrap(async(req,res)=>{
+        if(req.adminUser.role!=="admin")return res.sendStatus(403);
+        const raw=await storage.read("reviews"),reviews=JSON.parse(raw||"{}"),action=reviews[req.params.id]?.actions?.[Number(req.params.index)];
+        if(req.body.revision!==revision(raw))return res.status(409).json({error:"Actions changed. Refresh and retry."});
+        if(!action||typeof req.body.completed!=="boolean")return res.status(400).json({error:"Invalid action."});
+        action.completed=req.body.completed;reviews[req.params.id].updatedAt=new Date().toISOString();await commit(storage,[update("reviews",raw,reviews)],req.adminUser,"incident.action_updated",req.params.id);res.json({ok:true});
+    }));
     app.get("/api/admin/incident-reviews",wrap(async(req,res)=>{
         const status=JSON.parse(await storage.read("status")),reviews=Object.assign(Object.create(null),JSON.parse(await storage.read("reviews")||"{}"));
         const items=(status.incidents||[]).filter(i=>i.phase==="resolved"||reviews[i.id]).map(i=>({id:i.id,title:i.title,service:i.service||i.serviceId,phase:i.phase,resolvedAt:i.resolvedAt,reviewed:!!reviews[i.id],openActions:(reviews[i.id]?.actions||[]).filter(a=>!a.completed).length})).sort((a,b)=>Date.parse(b.resolvedAt||0)-Date.parse(a.resolvedAt||0));
