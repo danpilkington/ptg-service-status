@@ -4,8 +4,8 @@
     "Microsoft:sharepoint-online": {
       "active": false,
       "status": "operational",
-      "notifiedAt": "2026-10-01T18:06:20.137Z",
-      "recoveredAt": "2026-10-01T18:54:20.280Z"
+      "notifiedAt": "2026-10-05T14:45:44.399Z",
+      "recoveredAt": "2026-10-05T18:15:44.568Z"
     },
     "Microsoft:onedrive": {
       "active": false,
@@ -120,8 +120,8 @@
     "PTG:epicor-reports-729bd7d6": {
       "active": false,
       "status": "operational",
-      "notifiedAt": "2026-10-05T05:11:38.191Z",
-      "recoveredAt": "2026-10-05T05:12:39.041Z"
+      "notifiedAt": "2026-10-06T05:11:49.089Z",
+      "recoveredAt": "2026-10-06T05:12:49.341Z"
     },
     "PTG:epicor-database-6966f287": {
       "active": false,
